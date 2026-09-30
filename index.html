@@ -227,7 +227,7 @@
       return;
     }
 
-    const { data, error } = await db.auth.signUp({ email, password });
+    const { data, error } = await db.auth.signUp({\n      email,\n      password,\n      options: { emailRedirectTo: window.location.origin }\n    });
     if (error) {
       status("authStatus", error.message, "error");
       return;
