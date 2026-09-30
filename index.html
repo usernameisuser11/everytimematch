@@ -380,16 +380,16 @@
       return;
     }
 
-    area.innerHTML = \`
+    area.innerHTML = `
       <div class="profile-card">
         <div class="photo">🙂</div>
         <div class="profile-body">
           <div class="profile-top">
-            <h2>\${esc(p.nickname)}</h2>
-            <span class="tag">\${esc(p.grade)}</span>
-            \${p.mbti ? '<span class="tag">' + esc(p.mbti) + '</span>' : ''}
+            <h2>${esc(p.nickname)}</h2>
+            <span class="tag">${esc(p.grade)}</span>
+            ${p.mbti ? '<span class="tag">' + esc(p.mbti) + '</span>' : ''}
           </div>
-          <div class="intro">\${esc(p.bio)}</div>
+          <div class="intro">${esc(p.bio)}</div>
           <div class="hidden-contact">🔒 연락수단은 매칭 후 공개됩니다.</div>
         </div>
       </div>
@@ -401,7 +401,7 @@
         <button onclick="reportCandidate()">신고</button>
         <button onclick="blockCandidate()">차단</button>
       </div>
-    \`;
+    `;
   }
 
   function skipCandidate() {
