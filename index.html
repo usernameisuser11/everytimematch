@@ -5,669 +5,534 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#ffffff" />
   <title>Everytime Match</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --accent: #ff5f78;
-      --accent-dark: #e94a64;
-      --bg: #f5f5f7;
-      --text: #202124;
-      --muted: #777b82;
-      --line: #ececf0;
-      --card: #ffffff;
-      --soft: #fff3f5;
-      --danger: #e5484d;
+      --accent:#ff5f78; --accent-dark:#e94a64; --bg:#f5f5f7; --text:#202124;
+      --muted:#777b82; --line:#ececf0; --soft:#fff3f5; --danger:#e5484d;
     }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-
-    .app {
-      width: 100%;
-      max-width: 460px;
-      min-height: 100vh;
-      margin: 0 auto;
-      background: #fff;
-      position: relative;
-      box-shadow: 0 0 40px rgba(0,0,0,.04);
-    }
-
-    header {
-      height: 62px;
-      padding: 0 20px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,.96);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(12px);
-    }
-
-    .brand {
-      font-weight: 800;
-      font-size: 18px;
-      letter-spacing: -.4px;
-    }
-
-    .badge {
-      font-size: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #f3f3f5;
-      color: #666a70;
-    }
-
-    .screen {
-      display: none;
-      padding: 24px 20px 90px;
-    }
-
-    .screen.active { display: block; }
-
-    h1 {
-      margin: 0;
-      font-size: 30px;
-      line-height: 1.32;
-      letter-spacing: -.7px;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: -.5px;
-    }
-
-    p {
-      margin: 0;
-    }
-
-    .muted {
-      color: var(--muted);
-      line-height: 1.65;
-      font-size: 14px;
-    }
-
-    .hero {
-      padding-top: 62px;
-    }
-
-    .hero-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 22px;
-      display: grid;
-      place-items: center;
-      background: var(--soft);
-      font-size: 34px;
-      margin-bottom: 26px;
-    }
-
-    .hero .muted {
-      margin-top: 14px;
-      font-size: 15px;
-    }
-
-    .notice {
-      margin-top: 28px;
-      padding: 15px 16px;
-      border-radius: 15px;
-      background: #f7f7f9;
-      color: #696d73;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .primary, .secondary {
-      width: 100%;
-      border-radius: 14px;
-      padding: 16px;
-      font-weight: 750;
-      font-size: 15px;
-    }
-
-    .primary {
-      border: 0;
-      color: #fff;
-      background: var(--accent);
-      margin-top: 16px;
-    }
-
-    .primary:hover { background: var(--accent-dark); }
-
-    .secondary {
-      border: 1px solid #dedee3;
-      color: #4f5359;
-      background: #fff;
-      margin-top: 10px;
-    }
-
-    .section-head {
-      margin-bottom: 28px;
-    }
-
-    .section-head .muted {
-      margin-top: 8px;
-    }
-
-    .field {
-      margin-bottom: 19px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    input, select, textarea {
-      width: 100%;
-      border: 1px solid #dedee3;
-      background: #fafafa;
-      color: var(--text);
-      border-radius: 12px;
-      padding: 13px 14px;
-      outline: none;
-    }
-
-    textarea {
-      min-height: 90px;
-      resize: vertical;
-    }
-
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--accent);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(255,95,120,.08);
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .check {
-      display: flex;
-      gap: 9px;
-      align-items: flex-start;
-      color: #6f7379;
-      font-size: 12px;
-      line-height: 1.55;
-      margin: 6px 0 4px;
-    }
-
-    .check input {
-      width: auto;
-      margin-top: 3px;
-    }
-
-    .profile-card {
-      margin-top: 22px;
-      border: 1px solid var(--line);
-      overflow: hidden;
-      border-radius: 22px;
-      box-shadow: 0 8px 28px rgba(0,0,0,.06);
-    }
-
-    .photo {
-      height: 330px;
-      display: grid;
-      place-items: center;
-      font-size: 88px;
-      background: linear-gradient(135deg, #ffe9ed 0%, #fff4e8 100%);
-    }
-
-    .profile-body {
-      padding: 20px;
-    }
-
-    .profile-top {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      flex-wrap: wrap;
-    }
-
-    .profile-top h2 {
-      margin-right: 3px;
-    }
-
-    .tag {
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: #f3f3f5;
-      color: #62666d;
-      font-size: 11px;
-      font-weight: 650;
-    }
-
-    .intro {
-      margin-top: 14px;
-      color: #4f535a;
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .hidden-contact {
-      margin-top: 16px;
-      padding: 12px 13px;
-      border-radius: 11px;
-      background: #f8f8fa;
-      color: #8b8f95;
-      font-size: 12px;
-    }
-
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1.35fr;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .actions button {
-      border: 0;
-      border-radius: 14px;
-      padding: 15px 12px;
-      font-weight: 750;
-    }
-
-    .skip {
-      color: #5b6066;
-      background: #f0f0f3;
-    }
-
-    .like {
-      color: #fff;
-      background: var(--accent);
-    }
-
-    .minor-actions {
-      display: flex;
-      justify-content: center;
-      gap: 22px;
-      margin-top: 20px;
-    }
-
-    .minor-actions button {
-      border: 0;
-      background: none;
-      color: #a1a4aa;
-      font-size: 12px;
-    }
-
-    .match-wrap {
-      padding-top: 65px;
-      text-align: center;
-    }
-
-    .match-icon {
-      width: 100px;
-      height: 100px;
-      margin: 0 auto 20px;
-      border-radius: 30px;
-      background: var(--soft);
-      display: grid;
-      place-items: center;
-      font-size: 48px;
-    }
-
-    .contact-box {
-      margin: 28px 0 8px;
-      padding: 18px;
-      border-radius: 15px;
-      background: var(--soft);
-      text-align: left;
-    }
-
-    .contact-label {
-      color: #9a5a65;
-      font-size: 11px;
-      font-weight: 750;
-      margin-bottom: 7px;
-    }
-
-    .contact-value {
-      font-size: 15px;
-      font-weight: 750;
-      word-break: break-all;
-    }
-
-    .empty {
-      text-align: center;
-      padding: 88px 20px 20px;
-    }
-
-    .empty-icon {
-      font-size: 54px;
-      margin-bottom: 18px;
-    }
-
-    .empty h3 {
-      margin: 0 0 10px;
-      font-size: 19px;
-    }
-
-    .demo-note {
-      margin-top: 20px;
-      text-align: center;
-      color: #b0b2b7;
-      font-size: 11px;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 360px) {
-      .row { grid-template-columns: 1fr; }
-      .photo { height: 290px; }
-    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select,textarea{font:inherit} button{cursor:pointer}
+    .app{width:100%;max-width:460px;min-height:100vh;margin:0 auto;background:#fff;box-shadow:0 0 40px rgba(0,0,0,.04)}
+    header{height:62px;padding:0 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.96);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
+    .brand{font-weight:800;font-size:18px;letter-spacing:-.4px}.badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#f3f3f5;color:#666a70}
+    .screen{display:none;padding:24px 20px 90px}.screen.active{display:block}
+    h1{margin:0;font-size:30px;line-height:1.32;letter-spacing:-.7px}h2{margin:0;font-size:24px;letter-spacing:-.5px}
+    .muted{color:var(--muted);line-height:1.65;font-size:14px}
+    .hero{padding-top:62px}.hero-icon{width:72px;height:72px;border-radius:22px;display:grid;place-items:center;background:var(--soft);font-size:34px;margin-bottom:26px}
+    .notice{margin-top:28px;padding:15px 16px;border-radius:15px;background:#f7f7f9;color:#696d73;font-size:13px;line-height:1.6}
+    .primary,.secondary,.danger{width:100%;border-radius:14px;padding:16px;font-weight:750;font-size:15px}
+    .primary{border:0;color:#fff;background:var(--accent);margin-top:16px}.primary:hover{background:var(--accent-dark)}
+    .secondary{border:1px solid #dedee3;color:#4f5359;background:#fff;margin-top:10px}
+    .danger{border:1px solid #ffd6db;color:var(--danger);background:#fff8f9;margin-top:10px}
+    .section-head{margin-bottom:28px}.section-head .muted{margin-top:8px}
+    .field{margin-bottom:19px}label{display:block;margin-bottom:8px;font-size:13px;font-weight:750}
+    input,select,textarea{width:100%;border:1px solid #dedee3;background:#fafafa;color:var(--text);border-radius:12px;padding:13px 14px;outline:none}
+    textarea{min-height:90px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(255,95,120,.08)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .check{display:flex;gap:9px;align-items:flex-start;color:#6f7379;font-size:12px;line-height:1.55;margin:6px 0 4px}.check input{width:auto;margin-top:3px}
+    .status{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#f7f7f9;color:#62666d;font-size:12px;line-height:1.5;display:none}
+    .status.show{display:block}.status.error{background:#fff1f3;color:#b4233a}.status.ok{background:#eefaf3;color:#237a48}
+    .profile-card{margin-top:22px;border:1px solid var(--line);overflow:hidden;border-radius:22px;box-shadow:0 8px 28px rgba(0,0,0,.06)}
+    .photo{height:330px;display:grid;place-items:center;font-size:88px;background:linear-gradient(135deg,#ffe9ed 0%,#fff4e8 100%)}
+    .profile-body{padding:20px}.profile-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.profile-top h2{margin-right:3px}
+    .tag{padding:5px 9px;border-radius:999px;background:#f3f3f5;color:#62666d;font-size:11px;font-weight:650}
+    .intro{margin-top:14px;color:#4f535a;line-height:1.6;font-size:14px}.hidden-contact{margin-top:16px;padding:12px 13px;border-radius:11px;background:#f8f8fa;color:#8b8f95;font-size:12px}
+    .actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:16px}.actions button{border:0;border-radius:14px;padding:15px 12px;font-weight:750}
+    .skip{color:#5b6066;background:#f0f0f3}.like{color:#fff;background:var(--accent)}
+    .minor-actions{display:flex;justify-content:center;gap:22px;margin-top:20px}.minor-actions button{border:0;background:none;color:#a1a4aa;font-size:12px}
+    .match-wrap{padding-top:65px;text-align:center}.match-icon{width:100px;height:100px;margin:0 auto 20px;border-radius:30px;background:var(--soft);display:grid;place-items:center;font-size:48px}
+    .contact-box{margin:28px 0 8px;padding:18px;border-radius:15px;background:var(--soft);text-align:left}.contact-label{color:#9a5a65;font-size:11px;font-weight:750;margin-bottom:7px}.contact-value{font-size:15px;font-weight:750;word-break:break-all}
+    .empty{text-align:center;padding:88px 20px 20px}.empty-icon{font-size:54px;margin-bottom:18px}.empty h3{margin:0 0 10px;font-size:19px}
+    .toolbar{display:flex;gap:8px;margin-bottom:18px}.toolbar button{flex:1;border:1px solid #e2e2e6;background:#fff;border-radius:11px;padding:10px 8px;color:#676b72;font-size:12px;font-weight:700}
+    .account-card{margin-top:18px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fafafa}
+    .account-card strong{display:block;margin-bottom:6px}.small{font-size:12px;color:#8a8e94;line-height:1.55}
+    @media(max-width:360px){.row{grid-template-columns:1fr}.photo{height:290px}}
   </style>
 </head>
 <body>
-  <main class="app">
-    <header>
-      <div class="brand">Everytime Match</div>
-      <div class="badge">상명대 · 데모</div>
-    </header>
+<main class="app">
+  <header>
+    <div class="brand">Everytime Match</div>
+    <div class="badge" id="headerBadge">상명대 · Beta</div>
+  </header>
 
-    <section id="home" class="screen active">
-      <div class="hero">
-        <div class="hero-icon">💗</div>
-        <h1>몇 가지만 적고<br>가볍게 시작해보세요</h1>
-        <p class="muted">
-          긴 프로필 대신 필요한 정보만 작성하고<br>
-          서로 관심이 맞으면 연결되는 캠퍼스 매칭 데모입니다.
-        </p>
+  <section id="home" class="screen active">
+    <div class="hero">
+      <div class="hero-icon">💗</div>
+      <h1>몇 가지만 적고<br>가볍게 시작해보세요</h1>
+      <p class="muted" style="margin-top:14px">긴 프로필 대신 필요한 정보만 작성하고 서로 관심이 맞으면 연결되는 캠퍼스 매칭 베타입니다.</p>
+      <div class="notice">연락수단은 매칭 전에는 공개되지 않습니다.<br>현재 베타는 이메일 계정으로 로그인하며 학교 이메일 인증은 추후 추가 예정입니다.</div>
+      <button class="primary" id="startBtn">시작하기</button>
+      <button class="secondary" id="homeLoginBtn">로그인</button>
+    </div>
+  </section>
 
-        <div class="notice">
-          연락수단은 매칭 전에는 공개되지 않습니다.<br>
-          현재 버전은 실제 회원가입·학교 인증 없이 동작하는 시연용 프로토타입입니다.
-        </div>
+  <section id="auth" class="screen">
+    <div class="section-head">
+      <h2>로그인 / 가입</h2>
+      <p class="muted">이메일과 비밀번호로 시작합니다.</p>
+    </div>
+    <div class="field"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" placeholder="example@email.com"></div>
+    <div class="field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상"></div>
+    <button class="primary" id="loginBtn">로그인</button>
+    <button class="secondary" id="signupBtn">새 계정 만들기</button>
+    <button class="secondary" onclick="go('home')">돌아가기</button>
+    <div id="authStatus" class="status"></div>
+  </section>
 
-        <button class="primary" onclick="go('register')">프로필 만들기</button>
+  <section id="register" class="screen">
+    <div class="section-head">
+      <h2>내 프로필</h2>
+      <p class="muted">필요한 항목만 간단하게 작성해주세요.</p>
+    </div>
+    <div class="field"><label for="nickname">닉네임</label><input id="nickname" maxlength="20" placeholder="예: 수뭉이"></div>
+    <div class="row">
+      <div class="field"><label for="grade">학년</label><select id="grade"><option value="">선택</option><option>1학년</option><option>2학년</option><option>3학년</option><option>4학년</option><option>졸업생</option></select></div>
+      <div class="field"><label for="mbti">MBTI · 선택</label><select id="mbti"><option value="">선택 안 함</option><option>INTJ</option><option>INTP</option><option>ENTJ</option><option>ENTP</option><option>INFJ</option><option>INFP</option><option>ENFJ</option><option>ENFP</option><option>ISTJ</option><option>ISFJ</option><option>ESTJ</option><option>ESFJ</option><option>ISTP</option><option>ISFP</option><option>ESTP</option><option>ESFP</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="gender">나</label><select id="gender"><option value="">선택</option><option>남성</option><option>여성</option></select></div>
+      <div class="field"><label for="preference">찾는 상대</label><select id="preference"><option value="">선택</option><option>남성</option><option>여성</option></select></div>
+    </div>
+    <div class="field"><label for="bio">한 줄 소개</label><textarea id="bio" maxlength="120" placeholder="예: 같이 밥 먹고 카페 갈 사람 찾아요"></textarea></div>
+    <div class="field"><label for="contactType">연락 방법</label><select id="contactType"><option>Instagram</option><option>카카오 오픈채팅</option></select></div>
+    <div class="field"><label for="contact">연락처</label><input id="contact" maxlength="300" placeholder="인스타 아이디 또는 오픈채팅 링크"></div>
+    <label class="check"><input type="checkbox" id="adult"><span>만 18세 이상이며 베타 이용에 동의합니다.</span></label>
+    <button class="primary" id="saveProfileBtn">프로필 저장</button>
+    <button class="secondary" id="registerLogoutBtn">로그아웃</button>
+    <div id="profileStatus" class="status"></div>
+  </section>
+
+  <section id="discover" class="screen">
+    <div class="toolbar">
+      <button id="refreshBtn">새로고침</button>
+      <button id="editBtn">내 프로필</button>
+      <button id="logoutBtn">로그아웃</button>
+    </div>
+    <div class="section-head">
+      <h2>오늘의 인연</h2>
+      <p class="muted">서로 관심을 보냈을 때만 매칭됩니다.</p>
+    </div>
+    <div id="discoverStatus" class="status"></div>
+    <div id="profileArea"></div>
+  </section>
+
+  <section id="match" class="screen">
+    <div class="match-wrap">
+      <div class="match-icon">💞</div>
+      <h1>서로 관심이 맞았어요</h1>
+      <p class="muted" style="margin-top:12px">이제 상대방이 등록한 연락수단을 확인할 수 있습니다.</p>
+      <div class="contact-box">
+        <div id="matchName" class="contact-label"></div>
+        <div id="matchContact" class="contact-value"></div>
       </div>
-    </section>
+      <button class="primary" id="continueBtn">계속 둘러보기</button>
+    </div>
+  </section>
 
-    <section id="register" class="screen">
-      <div class="section-head">
-        <h2>내 프로필</h2>
-        <p class="muted">복잡하지 않게 필요한 항목만 입력해주세요.</p>
-      </div>
+  <section id="account" class="screen">
+    <div class="section-head">
+      <h2>내 프로필</h2>
+      <p class="muted">프로필을 수정하거나 비활성화할 수 있습니다.</p>
+    </div>
+    <div class="account-card">
+      <strong id="accountEmail">-</strong>
+      <div class="small">연락처는 매칭된 상대에게만 공개됩니다.</div>
+    </div>
+    <button class="primary" id="editProfileBtn">프로필 수정</button>
+    <button class="danger" id="deleteProfileBtn">내 프로필 삭제</button>
+    <button class="secondary" onclick="go('discover')">돌아가기</button>
+  </section>
+</main>
 
-      <div class="field">
-        <label for="nickname">닉네임</label>
-        <input id="nickname" maxlength="12" placeholder="예: 수뭉이" />
-      </div>
+<script>
+  const SUPABASE_URL = "https://mrbuxqaeqvuevplpssgi.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_x8mtMxk3tQnIB4oI5gOc1A_aH2pL0OE";
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-      <div class="row">
-        <div class="field">
-          <label for="grade">학년</label>
-          <select id="grade">
-            <option value="">선택</option>
-            <option>1학년</option>
-            <option>2학년</option>
-            <option>3학년</option>
-            <option>4학년</option>
-            <option>졸업생</option>
-          </select>
-        </div>
+  let session = null;
+  let myProfile = null;
+  let candidates = [];
+  let currentIndex = 0;
 
-        <div class="field">
-          <label for="mbti">MBTI · 선택</label>
-          <select id="mbti">
-            <option value="">선택 안 함</option>
-            <option>INTJ</option><option>INTP</option><option>ENTJ</option><option>ENTP</option>
-            <option>INFJ</option><option>INFP</option><option>ENFJ</option><option>ENFP</option>
-            <option>ISTJ</option><option>ISFJ</option><option>ESTJ</option><option>ESFJ</option>
-            <option>ISTP</option><option>ISFP</option><option>ESTP</option><option>ESFP</option>
-          </select>
-        </div>
-      </div>
+  const $ = (id) => document.getElementById(id);
 
-      <div class="row">
-        <div class="field">
-          <label for="gender">나</label>
-          <select id="gender">
-            <option value="">선택</option>
-            <option>남성</option>
-            <option>여성</option>
-          </select>
-        </div>
+  function go(id) {
+    document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+    $(id).classList.add("active");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
 
-        <div class="field">
-          <label for="preference">찾는 상대</label>
-          <select id="preference">
-            <option value="">선택</option>
-            <option>남성</option>
-            <option>여성</option>
-          </select>
-        </div>
-      </div>
+  function status(id, message, type="") {
+    const el = $(id);
+    el.textContent = message || "";
+    el.className = "status" + (message ? " show" : "") + (type ? " " + type : "");
+  }
 
-      <div class="field">
-        <label for="bio">한 줄 소개</label>
-        <textarea id="bio" maxlength="80" placeholder="예: 같이 밥 먹고 카페 갈 사람 찾아요"></textarea>
-      </div>
+  function esc(value="") {
+    return String(value).replace(/[&<>"']/g, ch => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    })[ch]);
+  }
 
-      <div class="field">
-        <label for="contactType">연락 방법</label>
-        <select id="contactType">
-          <option>Instagram</option>
-          <option>카카오 오픈채팅</option>
-        </select>
-      </div>
+  async function init() {
+    const { data } = await db.auth.getSession();
+    session = data.session;
+    await routeFromSession();
+  }
 
-      <div class="field">
-        <label for="contact">연락처</label>
-        <input id="contact" placeholder="인스타 아이디 또는 오픈채팅 링크" />
-      </div>
-
-      <label class="check">
-        <input type="checkbox" id="adult" />
-        <span>만 18세 이상이며 데모 이용에 동의합니다.</span>
-      </label>
-
-      <button class="primary" onclick="saveProfile()">프로필 완성</button>
-      <button class="secondary" onclick="go('home')">돌아가기</button>
-
-      <p class="demo-note">입력 내용은 이 브라우저의 localStorage에만 저장됩니다.</p>
-    </section>
-
-    <section id="discover" class="screen">
-      <div class="section-head">
-        <h2>오늘의 인연</h2>
-        <p class="muted">관심을 보내도 상대가 함께 관심을 보낼 때만 매칭됩니다.</p>
-      </div>
-      <div id="profileArea"></div>
-    </section>
-
-    <section id="match" class="screen">
-      <div class="match-wrap">
-        <div class="match-icon">💞</div>
-        <h1>서로 관심이 맞았어요</h1>
-        <p class="muted" style="margin-top:12px">
-          이제 상대방이 등록한 연락수단을 확인할 수 있습니다.
-        </p>
-
-        <div class="contact-box">
-          <div id="matchName" class="contact-label"></div>
-          <div id="matchContact" class="contact-value"></div>
-        </div>
-
-        <button class="primary" onclick="nextProfile()">계속 둘러보기</button>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    const profiles = [
-      {
-        name: "봄날",
-        grade: "3학년",
-        mbti: "ENFP",
-        emoji: "🌸",
-        intro: "같이 맛집이나 카페 다니실 분 찾아요",
-        contactType: "Instagram",
-        contact: "@demo_spring",
-        mutual: false
-      },
-      {
-        name: "구름",
-        grade: "2학년",
-        mbti: "ISFP",
-        emoji: "☁️",
-        intro: "처음에는 조용한데 친해지면 말 많아요",
-        contactType: "Instagram",
-        contact: "@demo_cloud",
-        mutual: true
-      },
-      {
-        name: "라떼",
-        grade: "4학년",
-        mbti: "INTP",
-        emoji: "☕",
-        intro: "학교 끝나고 같이 밥 먹을 사람 있으면 좋겠습니다",
-        contactType: "카카오 오픈채팅",
-        contact: "open.kakao.com/demo",
-        mutual: false
-      }
-    ];
-
-    let currentProfile = 0;
-
-    function go(id) {
-      document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  async function routeFromSession() {
+    if (!session) {
+      $("headerBadge").textContent = "상명대 · Beta";
+      go("home");
+      return;
     }
 
-    function saveProfile() {
-      const profile = {
-        nickname: document.getElementById("nickname").value.trim(),
-        grade: document.getElementById("grade").value,
-        mbti: document.getElementById("mbti").value,
-        gender: document.getElementById("gender").value,
-        preference: document.getElementById("preference").value,
-        bio: document.getElementById("bio").value.trim(),
-        contactType: document.getElementById("contactType").value,
-        contact: document.getElementById("contact").value.trim()
-      };
+    $("headerBadge").textContent = "로그인됨";
+    $("accountEmail").textContent = session.user.email || "";
 
-      if (!profile.nickname || !profile.grade || !profile.gender || !profile.preference || !profile.bio || !profile.contact) {
-        alert("필수 항목을 모두 작성해주세요.");
-        return;
-      }
+    const { data: profile, error } = await db
+      .from("profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
 
-      if (!document.getElementById("adult").checked) {
-        alert("만 18세 이상 확인이 필요합니다.");
-        return;
-      }
+    if (error) {
+      console.error(error);
+      alert("프로필을 불러오지 못했습니다.");
+      return;
+    }
 
-      localStorage.setItem("everytimeMatchProfile", JSON.stringify(profile));
-      currentProfile = 0;
-      renderProfile();
+    myProfile = profile || null;
+
+    if (!myProfile) {
+      await loadProfileForm();
+      go("register");
+    } else {
+      await loadCandidates();
       go("discover");
     }
+  }
 
-    function renderProfile() {
-      const area = document.getElementById("profileArea");
+  async function signUp() {
+    status("authStatus", "가입 처리 중...");
+    const email = $("email").value.trim();
+    const password = $("password").value;
 
-      if (currentProfile >= profiles.length) {
-        area.innerHTML = `
-          <div class="empty">
-            <div class="empty-icon">🌙</div>
-            <h3>오늘 준비된 프로필을 모두 봤어요</h3>
-            <p class="muted">이 데모에서는 여기까지 체험할 수 있습니다.</p>
-            <button class="secondary" onclick="resetDemo()" style="margin-top:18px">데모 다시 보기</button>
+    if (!email || password.length < 6) {
+      status("authStatus", "이메일과 6자 이상의 비밀번호를 입력해주세요.", "error");
+      return;
+    }
+
+    const { data, error } = await db.auth.signUp({ email, password });
+    if (error) {
+      status("authStatus", error.message, "error");
+      return;
+    }
+
+    if (data.session) {
+      session = data.session;
+      status("authStatus", "가입되었습니다.", "ok");
+      await routeFromSession();
+    } else {
+      status("authStatus", "가입 확인 메일을 보냈습니다. 메일 인증 후 로그인해주세요.", "ok");
+    }
+  }
+
+  async function signIn() {
+    status("authStatus", "로그인 중...");
+    const email = $("email").value.trim();
+    const password = $("password").value;
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      status("authStatus", error.message, "error");
+      return;
+    }
+
+    session = data.session;
+    status("authStatus", "");
+    await routeFromSession();
+  }
+
+  async function signOut() {
+    await db.auth.signOut();
+    session = null;
+    myProfile = null;
+    candidates = [];
+    go("home");
+  }
+
+  async function loadProfileForm() {
+    if (!session) return;
+
+    const { data: profile } = await db
+      .from("profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    const { data: contact } = await db
+      .from("private_contacts")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    $("nickname").value = profile?.nickname || "";
+    $("grade").value = profile?.grade || "";
+    $("mbti").value = profile?.mbti || "";
+    $("gender").value = profile?.gender || "";
+    $("preference").value = profile?.preference || "";
+    $("bio").value = profile?.bio || "";
+    $("contactType").value = contact?.contact_type || "Instagram";
+    $("contact").value = contact?.contact_value || "";
+    $("adult").checked = Boolean(profile);
+  }
+
+  async function saveProfile() {
+    if (!session) return go("auth");
+
+    const profile = {
+      user_id: session.user.id,
+      nickname: $("nickname").value.trim(),
+      grade: $("grade").value,
+      mbti: $("mbti").value || null,
+      gender: $("gender").value,
+      preference: $("preference").value,
+      bio: $("bio").value.trim(),
+      is_active: true,
+      updated_at: new Date().toISOString()
+    };
+
+    const contact = {
+      user_id: session.user.id,
+      contact_type: $("contactType").value,
+      contact_value: $("contact").value.trim(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (!profile.nickname || !profile.grade || !profile.gender || !profile.preference || !profile.bio || !contact.contact_value) {
+      status("profileStatus", "필수 항목을 모두 입력해주세요.", "error");
+      return;
+    }
+    if (!$("adult").checked) {
+      status("profileStatus", "만 18세 이상 확인이 필요합니다.", "error");
+      return;
+    }
+
+    status("profileStatus", "저장 중...");
+
+    const { error: profileError } = await db.from("profiles").upsert(profile, { onConflict: "user_id" });
+    if (profileError) {
+      status("profileStatus", profileError.message, "error");
+      return;
+    }
+
+    const { error: contactError } = await db.from("private_contacts").upsert(contact, { onConflict: "user_id" });
+    if (contactError) {
+      status("profileStatus", contactError.message, "error");
+      return;
+    }
+
+    myProfile = profile;
+    status("profileStatus", "저장되었습니다.", "ok");
+    await loadCandidates();
+    go("discover");
+  }
+
+  async function loadCandidates() {
+    if (!session || !myProfile) return;
+
+    status("discoverStatus", "프로필을 불러오는 중...");
+    currentIndex = 0;
+
+    const { data, error } = await db
+      .from("profiles")
+      .select("user_id,nickname,grade,mbti,gender,preference,bio")
+      .eq("is_active", true)
+      .eq("gender", myProfile.preference)
+      .eq("preference", myProfile.gender)
+      .neq("user_id", session.user.id)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      status("discoverStatus", error.message, "error");
+      candidates = [];
+      renderCandidate();
+      return;
+    }
+
+    candidates = data || [];
+    status("discoverStatus", candidates.length ? "" : "조건에 맞는 다른 프로필이 아직 없습니다.");
+    renderCandidate();
+  }
+
+  function renderCandidate() {
+    const area = $("profileArea");
+    const p = candidates[currentIndex];
+
+    if (!p) {
+      area.innerHTML = '<div class="empty"><div class="empty-icon">🌙</div><h3>지금 볼 수 있는 프로필이 없어요</h3><p class="muted">새로운 사용자가 들어오면 다시 확인해보세요.</p></div>';
+      return;
+    }
+
+    area.innerHTML = \`
+      <div class="profile-card">
+        <div class="photo">🙂</div>
+        <div class="profile-body">
+          <div class="profile-top">
+            <h2>\${esc(p.nickname)}</h2>
+            <span class="tag">\${esc(p.grade)}</span>
+            \${p.mbti ? '<span class="tag">' + esc(p.mbti) + '</span>' : ''}
           </div>
-        `;
-        return;
-      }
-
-      const p = profiles[currentProfile];
-
-      area.innerHTML = `
-        <div class="profile-card">
-          <div class="photo">${p.emoji}</div>
-          <div class="profile-body">
-            <div class="profile-top">
-              <h2>${p.name}</h2>
-              <span class="tag">${p.grade}</span>
-              ${p.mbti ? `<span class="tag">${p.mbti}</span>` : ""}
-            </div>
-            <div class="intro">${p.intro}</div>
-            <div class="hidden-contact">🔒 연락수단은 매칭 후 공개됩니다.</div>
-          </div>
+          <div class="intro">\${esc(p.bio)}</div>
+          <div class="hidden-contact">🔒 연락수단은 매칭 후 공개됩니다.</div>
         </div>
+      </div>
+      <div class="actions">
+        <button class="skip" onclick="skipCandidate()">넘기기</button>
+        <button class="like" onclick="likeCandidate()">♡ 관심 있어요</button>
+      </div>
+      <div class="minor-actions">
+        <button onclick="reportCandidate()">신고</button>
+        <button onclick="blockCandidate()">차단</button>
+      </div>
+    \`;
+  }
 
-        <div class="actions">
-          <button class="skip" onclick="skipProfile()">넘기기</button>
-          <button class="like" onclick="likeProfile()">♡ 관심 있어요</button>
-        </div>
+  function skipCandidate() {
+    currentIndex++;
+    renderCandidate();
+  }
 
-        <div class="minor-actions">
-          <button onclick="reportProfile()">신고</button>
-          <button onclick="blockProfile()">차단</button>
-        </div>
-      `;
+  async function likeCandidate() {
+    const p = candidates[currentIndex];
+    if (!p || !session) return;
+
+    const { error } = await db.from("likes").upsert({
+      from_user: session.user.id,
+      to_user: p.user_id
+    }, { onConflict: "from_user,to_user" });
+
+    if (error) {
+      status("discoverStatus", error.message, "error");
+      return;
     }
 
-    function skipProfile() {
-      currentProfile++;
-      renderProfile();
+    const { data: matched, error: matchError } = await db.rpc("is_match", { target_user: p.user_id });
+    if (matchError) {
+      status("discoverStatus", matchError.message, "error");
+      return;
     }
 
-    function likeProfile() {
-      const p = profiles[currentProfile];
+    currentIndex++;
 
-      if (p.mutual) {
-        document.getElementById("matchName").textContent = p.name + "님의 연락처";
-        document.getElementById("matchContact").textContent = p.contactType + " · " + p.contact;
-        currentProfile++;
-        go("match");
-        return;
-      }
-
-      alert("관심을 보냈어요. 상대도 관심을 보내면 매칭됩니다.");
-      currentProfile++;
-      renderProfile();
+    if (!matched) {
+      status("discoverStatus", "관심을 보냈어요. 상대도 관심을 보내면 매칭됩니다.", "ok");
+      renderCandidate();
+      return;
     }
 
-    function nextProfile() {
-      renderProfile();
-      go("discover");
+    const { data: contact, error: contactError } = await db
+      .from("private_contacts")
+      .select("contact_type,contact_value")
+      .eq("user_id", p.user_id)
+      .single();
+
+    if (contactError) {
+      status("discoverStatus", "매칭은 되었지만 연락처를 불러오지 못했습니다.", "error");
+      renderCandidate();
+      return;
     }
 
-    function reportProfile() {
-      if (confirm("이 프로필을 신고하시겠습니까?")) {
-        alert("시연용 신고 처리입니다.");
-        currentProfile++;
-        renderProfile();
-      }
+    $("matchName").textContent = p.nickname + "님의 연락처";
+    $("matchContact").textContent = contact.contact_type + " · " + contact.contact_value;
+    go("match");
+  }
+
+  async function reportCandidate() {
+    const p = candidates[currentIndex];
+    if (!p || !session) return;
+    const reason = prompt("신고 사유를 간단히 입력해주세요. (선택)");
+    if (reason === null) return;
+
+    const { error } = await db.from("reports").insert({
+      reporter: session.user.id,
+      reported: p.user_id,
+      reason: reason.trim() || null
+    });
+
+    if (error) {
+      status("discoverStatus", error.message, "error");
+      return;
     }
 
-    function blockProfile() {
-      if (confirm("이 사용자를 차단하시겠습니까?")) {
-        alert("시연용 차단 처리입니다.");
-        currentProfile++;
-        renderProfile();
-      }
+    status("discoverStatus", "신고가 접수되었습니다.", "ok");
+    currentIndex++;
+    renderCandidate();
+  }
+
+  async function blockCandidate() {
+    const p = candidates[currentIndex];
+    if (!p || !session) return;
+    if (!confirm("이 사용자를 차단할까요? 서로의 프로필이 더 이상 보이지 않습니다.")) return;
+
+    const { error } = await db.from("blocks").upsert({
+      blocker: session.user.id,
+      blocked: p.user_id
+    }, { onConflict: "blocker,blocked" });
+
+    if (error) {
+      status("discoverStatus", error.message, "error");
+      return;
     }
 
-    function resetDemo() {
-      currentProfile = 0;
-      renderProfile();
+    status("discoverStatus", "차단했습니다.", "ok");
+    candidates.splice(currentIndex, 1);
+    renderCandidate();
+  }
+
+  async function deleteMyProfile() {
+    if (!session) return;
+    if (!confirm("내 프로필과 연락처를 삭제할까요? 계정 자체는 유지됩니다.")) return;
+
+    await db.from("private_contacts").delete().eq("user_id", session.user.id);
+    await db.from("likes").delete().eq("from_user", session.user.id);
+    await db.from("blocks").delete().eq("blocker", session.user.id);
+
+    const { error } = await db.from("profiles").delete().eq("user_id", session.user.id);
+    if (error) {
+      alert(error.message);
+      return;
     }
-  </script>
+
+    myProfile = null;
+    await loadProfileForm();
+    go("register");
+  }
+
+  $("startBtn").addEventListener("click", async () => session ? routeFromSession() : go("auth"));
+  $("homeLoginBtn").addEventListener("click", () => go("auth"));
+  $("loginBtn").addEventListener("click", signIn);
+  $("signupBtn").addEventListener("click", signUp);
+  $("saveProfileBtn").addEventListener("click", saveProfile);
+  $("registerLogoutBtn").addEventListener("click", signOut);
+  $("logoutBtn").addEventListener("click", signOut);
+  $("refreshBtn").addEventListener("click", loadCandidates);
+  $("editBtn").addEventListener("click", () => { $("accountEmail").textContent = session?.user?.email || ""; go("account"); });
+  $("editProfileBtn").addEventListener("click", async () => { await loadProfileForm(); go("register"); });
+  $("deleteProfileBtn").addEventListener("click", deleteMyProfile);
+  $("continueBtn").addEventListener("click", () => { renderCandidate(); go("discover"); });
+
+  db.auth.onAuthStateChange(async (_event, newSession) => {
+    session = newSession;
+  });
+
+  init();
+</script>
 </body>
 </html>
