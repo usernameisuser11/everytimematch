@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Everytime Match</title>
+  <style>
+    :root {
+      --accent: #ff5f78;
+      --accent-dark: #e94a64;
+      --bg: #f5f5f7;
+      --text: #202124;
+      --muted: #777b82;
+      --line: #ececf0;
+      --card: #ffffff;
+      --soft: #fff3f5;
+      --danger: #e5484d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: 100%;
+      max-width: 460px;
+      min-height: 100vh;
+      margin: 0 auto;
+      background: #fff;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,.04);
+    }
+
+    header {
+      height: 62px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.96);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -.4px;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f3f3f5;
+      color: #666a70;
+    }
+
+    .screen {
+      display: none;
+      padding: 24px 20px 90px;
+    }
+
+    .screen.active { display: block; }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.32;
+      letter-spacing: -.7px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: -.5px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    .hero {
+      padding-top: 62px;
+    }
+
+    .hero-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      background: var(--soft);
+      font-size: 34px;
+      margin-bottom: 26px;
+    }
+
+    .hero .muted {
+      margin-top: 14px;
+      font-size: 15px;
+    }
+
+    .notice {
+      margin-top: 28px;
+      padding: 15px 16px;
+      border-radius: 15px;
+      background: #f7f7f9;
+      color: #696d73;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .primary, .secondary {
+      width: 100%;
+      border-radius: 14px;
+      padding: 16px;
+      font-weight: 750;
+      font-size: 15px;
+    }
+
+    .primary {
+      border: 0;
+      color: #fff;
+      background: var(--accent);
+      margin-top: 16px;
+    }
+
+    .primary:hover { background: var(--accent-dark); }
+
+    .secondary {
+      border: 1px solid #dedee3;
+      color: #4f5359;
+      background: #fff;
+      margin-top: 10px;
+    }
+
+    .section-head {
+      margin-bottom: 28px;
+    }
+
+    .section-head .muted {
+      margin-top: 8px;
+    }
+
+    .field {
+      margin-bottom: 19px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #dedee3;
+      background: #fafafa;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 13px 14px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(255,95,120,.08);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .check {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      color: #6f7379;
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 6px 0 4px;
+    }
+
+    .check input {
+      width: auto;
+      margin-top: 3px;
+    }
+
+    .profile-card {
+      margin-top: 22px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+      border-radius: 22px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.06);
+    }
+
+    .photo {
+      height: 330px;
+      display: grid;
+      place-items: center;
+      font-size: 88px;
+      background: linear-gradient(135deg, #ffe9ed 0%, #fff4e8 100%);
+    }
+
+    .profile-body {
+      padding: 20px;
+    }
+
+    .profile-top {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .profile-top h2 {
+      margin-right: 3px;
+    }
+
+    .tag {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #f3f3f5;
+      color: #62666d;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .intro {
+      margin-top: 14px;
+      color: #4f535a;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .hidden-contact {
+      margin-top: 16px;
+      padding: 12px 13px;
+      border-radius: 11px;
+      background: #f8f8fa;
+      color: #8b8f95;
+      font-size: 12px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .actions button {
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 12px;
+      font-weight: 750;
+    }
+
+    .skip {
+      color: #5b6066;
+      background: #f0f0f3;
+    }
+
+    .like {
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .minor-actions {
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      margin-top: 20px;
+    }
+
+    .minor-actions button {
+      border: 0;
+      background: none;
+      color: #a1a4aa;
+      font-size: 12px;
+    }
+
+    .match-wrap {
+      padding-top: 65px;
+      text-align: center;
+    }
+
+    .match-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 20px;
+      border-radius: 30px;
+      background: var(--soft);
+      display: grid;
+      place-items: center;
+      font-size: 48px;
+    }
+
+    .contact-box {
+      margin: 28px 0 8px;
+      padding: 18px;
+      border-radius: 15px;
+      background: var(--soft);
+      text-align: left;
+    }
+
+    .contact-label {
+      color: #9a5a65;
+      font-size: 11px;
+      font-weight: 750;
+      margin-bottom: 7px;
+    }
+
+    .contact-value {
+      font-size: 15px;
+      font-weight: 750;
+      word-break: break-all;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 88px 20px 20px;
+    }
+
+    .empty-icon {
+      font-size: 54px;
+      margin-bottom: 18px;
+    }
+
+    .empty h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+    }
+
+    .demo-note {
+      margin-top: 20px;
+      text-align: center;
+      color: #b0b2b7;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 360px) {
+      .row { grid-template-columns: 1fr; }
+      .photo { height: 290px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">Everytime Match</div>
+      <div class="badge">상명대 · 데모</div>
+    </header>
+
+    <section id="home" class="screen active">
+      <div class="hero">
+        <div class="hero-icon">💗</div>
+        <h1>몇 가지만 적고<br>가볍게 시작해보세요</h1>
+        <p class="muted">
+          긴 프로필 대신 필요한 정보만 작성하고<br>
+          서로 관심이 맞으면 연결되는 캠퍼스 매칭 데모입니다.
+        </p>
+
+        <div class="notice">
+          연락수단은 매칭 전에는 공개되지 않습니다.<br>
+          현재 버전은 실제 회원가입·학교 인증 없이 동작하는 시연용 프로토타입입니다.
+        </div>
+
+        <button class="primary" onclick="go('register')">프로필 만들기</button>
+      </div>
+    </section>
+
+    <section id="register" class="screen">
+      <div class="section-head">
+        <h2>내 프로필</h2>
+        <p class="muted">복잡하지 않게 필요한 항목만 입력해주세요.</p>
+      </div>
+
+      <div class="field">
+        <label for="nickname">닉네임</label>
+        <input id="nickname" maxlength="12" placeholder="예: 수뭉이" />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="grade">학년</label>
+          <select id="grade">
+            <option value="">선택</option>
+            <option>1학년</option>
+            <option>2학년</option>
+            <option>3학년</option>
+            <option>4학년</option>
+            <option>졸업생</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="mbti">MBTI · 선택</label>
+          <select id="mbti">
+            <option value="">선택 안 함</option>
+            <option>INTJ</option><option>INTP</option><option>ENTJ</option><option>ENTP</option>
+            <option>INFJ</option><option>INFP</option><option>ENFJ</option><option>ENFP</option>
+            <option>ISTJ</option><option>ISFJ</option><option>ESTJ</option><option>ESFJ</option>
+            <option>ISTP</option><option>ISFP</option><option>ESTP</option><option>ESFP</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="gender">나</label>
+          <select id="gender">
+            <option value="">선택</option>
+            <option>남성</option>
+            <option>여성</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="preference">찾는 상대</label>
+          <select id="preference">
+            <option value="">선택</option>
+            <option>남성</option>
+            <option>여성</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="bio">한 줄 소개</label>
+        <textarea id="bio" maxlength="80" placeholder="예: 같이 밥 먹고 카페 갈 사람 찾아요"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="contactType">연락 방법</label>
+        <select id="contactType">
+          <option>Instagram</option>
+          <option>카카오 오픈채팅</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="contact">연락처</label>
+        <input id="contact" placeholder="인스타 아이디 또는 오픈채팅 링크" />
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="adult" />
+        <span>만 18세 이상이며 데모 이용에 동의합니다.</span>
+      </label>
+
+      <button class="primary" onclick="saveProfile()">프로필 완성</button>
+      <button class="secondary" onclick="go('home')">돌아가기</button>
+
+      <p class="demo-note">입력 내용은 이 브라우저의 localStorage에만 저장됩니다.</p>
+    </section>
+
+    <section id="discover" class="screen">
+      <div class="section-head">
+        <h2>오늘의 인연</h2>
+        <p class="muted">관심을 보내도 상대가 함께 관심을 보낼 때만 매칭됩니다.</p>
+      </div>
+      <div id="profileArea"></div>
+    </section>
+
+    <section id="match" class="screen">
+      <div class="match-wrap">
+        <div class="match-icon">💞</div>
+        <h1>서로 관심이 맞았어요</h1>
+        <p class="muted" style="margin-top:12px">
+          이제 상대방이 등록한 연락수단을 확인할 수 있습니다.
+        </p>
+
+        <div class="contact-box">
+          <div id="matchName" class="contact-label"></div>
+          <div id="matchContact" class="contact-value"></div>
+        </div>
+
+        <button class="primary" onclick="nextProfile()">계속 둘러보기</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const profiles = [
+      {
+        name: "봄날",
+        grade: "3학년",
+        mbti: "ENFP",
+        emoji: "🌸",
+        intro: "같이 맛집이나 카페 다니실 분 찾아요",
+        contactType: "Instagram",
+        contact: "@demo_spring",
+        mutual: false
+      },
+      {
+        name: "구름",
+        grade: "2학년",
+        mbti: "ISFP",
+        emoji: "☁️",
+        intro: "처음에는 조용한데 친해지면 말 많아요",
+        contactType: "Instagram",
+        contact: "@demo_cloud",
+        mutual: true
+      },
+      {
+        name: "라떼",
+        grade: "4학년",
+        mbti: "INTP",
+        emoji: "☕",
+        intro: "학교 끝나고 같이 밥 먹을 사람 있으면 좋겠습니다",
+        contactType: "카카오 오픈채팅",
+        contact: "open.kakao.com/demo",
+        mutual: false
+      }
+    ];
+
+    let currentProfile = 0;
+
+    function go(id) {
+      document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function saveProfile() {
+      const profile = {
+        nickname: document.getElementById("nickname").value.trim(),
+        grade: document.getElementById("grade").value,
+        mbti: document.getElementById("mbti").value,
+        gender: document.getElementById("gender").value,
+        preference: document.getElementById("preference").value,
+        bio: document.getElementById("bio").value.trim(),
+        contactType: document.getElementById("contactType").value,
+        contact: document.getElementById("contact").value.trim()
+      };
+
+      if (!profile.nickname || !profile.grade || !profile.gender || !profile.preference || !profile.bio || !profile.contact) {
+        alert("필수 항목을 모두 작성해주세요.");
+        return;
+      }
+
+      if (!document.getElementById("adult").checked) {
+        alert("만 18세 이상 확인이 필요합니다.");
+        return;
+      }
+
+      localStorage.setItem("everytimeMatchProfile", JSON.stringify(profile));
+      currentProfile = 0;
+      renderProfile();
+      go("discover");
+    }
+
+    function renderProfile() {
+      const area = document.getElementById("profileArea");
+
+      if (currentProfile >= profiles.length) {
+        area.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🌙</div>
+            <h3>오늘 준비된 프로필을 모두 봤어요</h3>
+            <p class="muted">이 데모에서는 여기까지 체험할 수 있습니다.</p>
+            <button class="secondary" onclick="resetDemo()" style="margin-top:18px">데모 다시 보기</button>
+          </div>
+        `;
+        return;
+      }
+
+      const p = profiles[currentProfile];
+
+      area.innerHTML = `
+        <div class="profile-card">
+          <div class="photo">${p.emoji}</div>
+          <div class="profile-body">
+            <div class="profile-top">
+              <h2>${p.name}</h2>
+              <span class="tag">${p.grade}</span>
+              ${p.mbti ? `<span class="tag">${p.mbti}</span>` : ""}
+            </div>
+            <div class="intro">${p.intro}</div>
+            <div class="hidden-contact">🔒 연락수단은 매칭 후 공개됩니다.</div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="skip" onclick="skipProfile()">넘기기</button>
+          <button class="like" onclick="likeProfile()">♡ 관심 있어요</button>
+        </div>
+
+        <div class="minor-actions">
+          <button onclick="reportProfile()">신고</button>
+          <button onclick="blockProfile()">차단</button>
+        </div>
+      `;
+    }
+
+    function skipProfile() {
+      currentProfile++;
+      renderProfile();
+    }
+
+    function likeProfile() {
+      const p = profiles[currentProfile];
+
+      if (p.mutual) {
+        document.getElementById("matchName").textContent = p.name + "님의 연락처";
+        document.getElementById("matchContact").textContent = p.contactType + " · " + p.contact;
+        currentProfile++;
+        go("match");
+        return;
+      }
+
+      alert("관심을 보냈어요. 상대도 관심을 보내면 매칭됩니다.");
+      currentProfile++;
+      renderProfile();
+    }
+
+    function nextProfile() {
+      renderProfile();
+      go("discover");
+    }
+
+    function reportProfile() {
+      if (confirm("이 프로필을 신고하시겠습니까?")) {
+        alert("시연용 신고 처리입니다.");
+        currentProfile++;
+        renderProfile();
+      }
+    }
+
+    function blockProfile() {
+      if (confirm("이 사용자를 차단하시겠습니까?")) {
+        alert("시연용 차단 처리입니다.");
+        currentProfile++;
+        renderProfile();
+      }
+    }
+
+    function resetDemo() {
+      currentProfile = 0;
+      renderProfile();
+    }
+  </script>
+</body>
+</html>
