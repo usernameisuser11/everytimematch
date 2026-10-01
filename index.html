@@ -86,14 +86,16 @@
   </section>
 
   <section id="auth" class="screen">
-    <div class="section-head"><h2>로그인 / 가입</h2><p class="muted">이메일과 비밀번호로 시작합니다.</p></div>
-    <div class="field"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" placeholder="example@email.com"></div>
+    <div class="section-head"><h2>학교 이메일로 시작하기</h2><p class="muted">처음 이용하시면 학교 이메일 인증 후 바로 가입할 수 있습니다.</p></div>
+    <div class="field"><label for="email">학교 이메일</label><input id="email" type="email" autocomplete="email" placeholder="학번@sangmyung.kr"></div>
     <div class="field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상"></div>
-    <div class="notice" style="margin-top:0">상명대 이메일 인증 후 이용할 수 있습니다.<br>허용 도메인: @sangmyung.kr / @smu.ac.kr / @sangmyung.ac.kr</div>
-    <div class="mail-tip">📬 인증 메일이 안 보이면 <strong>스팸메일함 / 정크메일함</strong>도 꼭 확인해주세요.</div>
-    <button class="primary" id="loginBtn">로그인</button>
-    <button class="secondary" id="signupBtn">새 계정 만들기</button>
-    <button class="secondary" id="resendBtn">인증 메일 다시 보내기</button>
+    <div class="notice" style="margin-top:0">
+      처음 가입하시는 분은 <strong>학교 이메일로 가입하기</strong>를 눌러주세요.<br>
+      가입 후 학교 메일로 8자리 인증코드를 보내드립니다.
+    </div>
+    <div class="small" style="margin-top:10px">허용 도메인: @sangmyung.kr / @smu.ac.kr / @sangmyung.ac.kr</div>
+    <button class="primary" id="signupBtn">학교 이메일로 가입하기</button>
+    <button class="secondary" id="loginBtn">기존 계정 로그인</button>
     <button class="secondary" onclick="go('home')">돌아가기</button>
     <div id="authStatus" class="status"></div>
   </section>
@@ -447,7 +449,7 @@
       await routeFromSession();
     }else{
       openVerifyCode(email);
-      status("verifyCodeStatus","인증코드를 보냈습니다. 받은편지함과 스팸/정크메일함을 확인해주세요.","ok");
+      status("verifyCodeStatus","가입이 완료되었습니다. 학교 메일로 보낸 8자리 인증코드를 입력해주세요. 메일이 안 보이면 스팸/정크메일함도 확인해주세요.","ok");
     }
   }
 
@@ -830,7 +832,6 @@
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
   $("deleteAccountBtn").addEventListener("click",deleteMyAccount);
   $("refreshBlocksBtn").addEventListener("click",loadBlockedUsers);
-  $("resendBtn").addEventListener("click",()=>resendVerification("authStatus"));
   $("verifyCodeBtn").addEventListener("click",verifySignupCode);
   $("verifyCodeResendBtn").addEventListener("click",()=>resendVerification("verifyCodeStatus"));
   $("verifyCodeBackBtn").addEventListener("click",()=>{
