@@ -749,10 +749,9 @@ revoke all on function public.get_blocked_users() from public;
 revoke all on function public.unblock_user(uuid) from public;
 revoke all on function public.delete_my_account() from public;
 
-grant execute on function public.is_school_verified(uuid) to authenticated;
-grant execute on function public.is_beta_tester(uuid) to authenticated;
+-- Only can_use_beta() needs direct authenticated EXECUTE because profile RLS
+-- calls it as the signed-in user. The other helpers stay internal.
 grant execute on function public.can_use_beta(uuid) to authenticated;
-grant execute on function public.get_verification_kind(uuid) to authenticated;
 grant execute on function public.get_my_access_status() to authenticated;
 grant execute on function public.get_next_candidate() to authenticated;
 grant execute on function public.record_candidate_decision(uuid, text) to authenticated;
