@@ -8,6 +8,7 @@ Supabase 프로젝트 생성 후 SQL Editor에서 아래 순서대로 실행합�
 2. `supabase/migrations/20261001_discovery_limits.sql`
 3. `supabase/migrations/20261001_matches_chat_reports.sql`
 4. `supabase/migrations/20261001_beta_readiness_school_verification.sql`
+5. `supabase/migrations/20261001_microsoft_school_oauth.sql`
 
 각 파일을 전체 복사해서 **Run** 하면 됩니다.
 
@@ -86,16 +87,23 @@ NOTIFY pgrst, 'reload schema';
 DB 업데이트 후 `TEST_CHECKLIST.md` 순서대로 테스트합니다.
 
 
-## 가입 인증코드
 
-Everytime Match는 가입 인증메일의 8자리 OTP를 웹 화면에서 직접 입력하는 방식을 사용합니다.
 
-Supabase Dashboard에서:
+## Microsoft 학교계정 인증
 
-**Authentication → Email Templates → Confirm sign up**
+신규 학교 인증은 이메일 OTP 대신 Microsoft Azure OAuth를 사용합니다.
 
-으로 이동한 뒤 이메일 본문에 `{{ .Token }}`을 포함해야 합니다.
+설정 순서:
 
-권장 Subject/HTML은 [SUPABASE_EMAIL_TEMPLATE.md](./SUPABASE_EMAIL_TEMPLATE.md)에 정리되어 있습니다.
+1. Microsoft Entra에서 OAuth 앱 등록
+2. Supabase Auth callback URL 등록
+3. Client ID / Client Secret 생성
+4. Supabase `Authentication → Providers → Azure` 활성화
+5. 위 5번째 migration 실행
+6. Railway에서 `Microsoft로 상명대 인증` 테스트
 
-메일이 받은편지함에 보이지 않을 수 있으므로 UI에는 **스팸메일함 / 정크메일함 확인 안내**를 표시합니다.
+상세 설정은 [MICROSOFT_AUTH_SETUP.md](./MICROSOFT_AUTH_SETUP.md)를 참고하세요.
+
+Everytime Match DB는 OAuth 성공만 신뢰하지 않고 Azure identity와 `@sangmyung.kr` 도메인을 다시 검사합니다.
+
+기존 테스트 계정은 beta tester allowlist로 계속 사용할 수 있습니다.
