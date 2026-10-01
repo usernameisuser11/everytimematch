@@ -10,10 +10,12 @@
 
 ## 현재 구현 방향
 
-- Microsoft 학교계정 인증
-  - 사용자는 `학번@sangmyung.kr` Microsoft 계정으로 로그인
-  - 로그인 후 DB에서 Azure identity + @sangmyung.kr을 다시 검증
-  - SMTP / 이메일 OTP 불필요
+- 상명대 학교 이메일 인증
+  - `@sangmyung.kr`
+  - `@smu.ac.kr`
+  - `@sangmyung.ac.kr`
+  - 가입 후 메일의 8자리 OTP 입력
+  - Gmail SMTP로 인증메일 발송
 - 기존 테스트 계정은 beta tester로 자동 보존
 - 찾는 상대: 남성 / 여성 / 상관없음
 - 찾는 관계: 친구 / 소개팅 / 둘 다
@@ -57,16 +59,16 @@
 2. `supabase/migrations/20261001_discovery_limits.sql`
 3. `supabase/migrations/20261001_matches_chat_reports.sql`
 4. `supabase/migrations/20261001_beta_readiness_school_verification.sql`
-5. `supabase/migrations/20261001_microsoft_school_oauth.sql`
+5. Microsoft OAuth migration을 이미 실행한 프로젝트만 `supabase/migrations/20261001_restore_email_otp_verification.sql` 실행
 
 기존 프로젝트도 위 migration 파일을 순서대로 추가 실행하면 됩니다.
 
 ## 현재 테스트 포인트
 
-- Microsoft 로그인 버튼
-- @sangmyung.kr 학교계정 인증
-- 개인 Microsoft 계정 이용 차단
-- OAuth 복귀 후 자동 인증 완료
+- 학교 이메일 신규 가입 제한
+- 가입 후 8자리 이메일 OTP 인증
+- Gmail SMTP 인증메일 발송
+- 인증 완료 전 서비스 이용 차단
 - 기존 테스트 계정 계속 사용 가능
 - 프로필 저장
 - 인증 배지 표시
@@ -86,6 +88,7 @@
 - [기능 테스트 체크리스트](./TEST_CHECKLIST.md)
 - [참고 GitHub 프로젝트](./RESEARCH_MATCHING_REPOS.md)
 - [Supabase 설정](./SUPABASE_SETUP.md)
-- [Microsoft 학교계정 인증 설정](./MICROSOFT_AUTH_SETUP.md)
+- [Gmail SMTP 설정](./GMAIL_SMTP_SETUP.md)
+- [인증메일 템플릿](./SUPABASE_EMAIL_TEMPLATE.md)
 
 아직 정식 서비스 운영이 확정된 프로젝트는 아니며, 소규모 베타로 실제 사용 흐름을 검증하는 것을 목표로 합니다.
