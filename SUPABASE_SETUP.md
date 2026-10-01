@@ -84,3 +84,18 @@ NOTIFY pgrst, 'reload schema';
 - Database connection URI
 
 DB 업데이트 후 `TEST_CHECKLIST.md` 순서대로 테스트합니다.
+
+
+## 가입 인증코드
+
+Everytime Match는 가입 인증메일의 8자리 OTP를 웹 화면에서 직접 입력하는 방식을 사용합니다.
+
+Supabase Dashboard에서:
+
+**Authentication → Email Templates → Confirm sign up**
+
+으로 이동한 뒤 이메일 본문에 `{{ .Token }}`을 포함해야 합니다.
+
+권장 Subject/HTML은 [SUPABASE_EMAIL_TEMPLATE.md](./SUPABASE_EMAIL_TEMPLATE.md)에 정리되어 있습니다.
+
+메일이 받은편지함에 보이지 않을 수 있으므로 UI에는 **스팸메일함 / 정크메일함 확인 안내**를 표시합니다.
