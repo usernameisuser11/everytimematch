@@ -87,10 +87,23 @@
     <div class="section-head"><h2>로그인 / 가입</h2><p class="muted">이메일과 비밀번호로 시작합니다.</p></div>
     <div class="field"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" placeholder="example@email.com"></div>
     <div class="field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상"></div>
+    <div class="notice" style="margin-top:0">상명대 이메일 인증 후 이용할 수 있습니다.<br>허용 도메인: @sangmyung.kr / @smu.ac.kr / @sangmyung.ac.kr</div>
     <button class="primary" id="loginBtn">로그인</button>
     <button class="secondary" id="signupBtn">새 계정 만들기</button>
+    <button class="secondary" id="resendBtn">인증 메일 다시 보내기</button>
     <button class="secondary" onclick="go('home')">돌아가기</button>
     <div id="authStatus" class="status"></div>
+  </section>
+
+  <section id="verify" class="screen">
+    <div class="section-head">
+      <h2>학교 인증이 필요해요</h2>
+      <p class="muted" id="verifyMessage">상명대 이메일 인증을 완료해주세요.</p>
+    </div>
+    <div class="notice">이메일 주소 자체는 상대 프로필에 공개하지 않습니다. 인증 여부만 사용합니다.</div>
+    <button class="primary" id="verifyResendBtn">인증 메일 다시 보내기</button>
+    <button class="secondary" id="verifyLogoutBtn">로그아웃</button>
+    <div id="verifyStatus" class="status"></div>
   </section>
 
   <section id="register" class="screen">
@@ -152,10 +165,24 @@
 
   <section id="account" class="screen">
     <div class="section-head"><h2>내 프로필</h2><p class="muted">내 정보와 계정 상태를 관리합니다.</p></div>
-    <div class="account-card"><strong id="accountEmail">-</strong><div class="small">외부 연락처는 저장하지 않습니다. 채팅은 매칭된 사용자끼리만 가능합니다.</div></div>
+    <div class="account-card">
+      <strong id="accountEmail">-</strong>
+      <div class="small" id="accountVerification">학교 인증 상태 확인 중</div>
+      <div class="small" style="margin-top:6px">이메일 주소는 상대에게 공개되지 않습니다.</div>
+    </div>
+
     <button class="primary" id="editProfileBtn">프로필 수정</button>
-    <button class="secondary" id="accountLogoutBtn">로그아웃</button>
-    <button class="danger" id="deleteProfileBtn">내 프로필 삭제</button>
+
+    <div class="section-head" style="margin-top:30px;margin-bottom:14px">
+      <h3>차단한 사용자</h3>
+      <p class="muted" style="margin-top:6px">차단을 풀어도 이전 매칭이나 채팅은 자동으로 복구되지 않습니다.</p>
+    </div>
+    <button class="secondary" id="refreshBlocksBtn" style="margin-top:0">차단 목록 새로고침</button>
+    <div id="blockedStatus" class="status"></div>
+    <div id="blockedList" class="match-list"></div>
+
+    <button class="secondary" id="accountLogoutBtn" style="margin-top:28px">로그아웃</button>
+    <button class="danger" id="deleteAccountBtn">회원 탈퇴</button>
   </section>
 </main>
 
@@ -191,8 +218,11 @@
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_x8mtMxk3tQnIB4oI5gOc1A_aH2pL0OE";
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+  const ALLOWED_SCHOOL_DOMAINS = ["sangmyung.kr","smu.ac.kr","sangmyung.ac.kr"];
+
   let session = null;
   let myProfile = null;
+  let accessStatus = null;
   let currentCandidate = null;
   let myMatches = [];
   let activeMatch = null;
@@ -208,6 +238,43 @@
     return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]));
   }
 
+  function emailDomain(email=""){
+    const parts=String(email).trim().toLowerCase().split("@");
+    return parts.length===2?parts[1]:"";
+  }
+
+  function isAllowedSchoolEmail(email=""){
+    return ALLOWED_SCHOOL_DOMAINS.includes(emailDomain(email));
+  }
+
+  function verificationLabel(kind){
+    if(kind==="school_verified")return "✓ 상명대 인증";
+    if(kind==="beta_tester")return "베타 테스트 계정";
+    if(kind==="email_unconfirmed")return "이메일 인증 대기";
+    return "미인증";
+  }
+
+  function humanError(error){
+    const msg=String(error?.message||error||"");
+    if(msg.includes("Email not confirmed"))return "이메일 인증이 아직 완료되지 않았습니다.";
+    if(msg.includes("Invalid login credentials"))return "이메일 또는 비밀번호를 확인해주세요.";
+    if(msg.includes("SCHOOL_VERIFICATION_REQUIRED"))return "상명대 이메일 인증이 필요합니다.";
+    if(msg.includes("TARGET_NOT_VERIFIED"))return "상대방의 학교 인증 상태를 확인할 수 없습니다.";
+    if(msg.includes("DAILY_LIKE_LIMIT_REACHED"))return "오늘 보낼 수 있는 관심을 모두 사용했어요.";
+    if(msg.includes("PROFILE_ALREADY_DECIDED"))return "이미 선택한 프로필입니다.";
+    if(msg.includes("PROFILE_NOT_VIEWED_TODAY"))return "오늘 확인한 프로필이 아닙니다.";
+    if(msg.includes("schema cache")||msg.includes("Could not find the function"))return "데이터베이스 업데이트가 아직 적용되지 않았습니다.";
+    return msg||"처리 중 오류가 발생했습니다.";
+  }
+
+  async function loadAccessStatus(){
+    if(!session)return null;
+    const {data,error}=await db.rpc("get_my_access_status");
+    if(error)throw error;
+    accessStatus=data?.[0]||null;
+    return accessStatus;
+  }
+
   function go(id){
     document.querySelectorAll(".screen").forEach(el=>el.classList.remove("active"));
     $(id).classList.add("active");
@@ -218,7 +285,7 @@
   }
 
   function updateNav(id){
-    const show = Boolean(session && myProfile && !["home","auth","register","chat","matchSuccess"].includes(id));
+    const show = Boolean(session && myProfile && accessStatus?.access_allowed && !["home","auth","verify","register","chat","matchSuccess"].includes(id));
     $("bottomNav").classList.toggle("show",show);
     document.querySelectorAll("#bottomNav button").forEach(btn=>btn.classList.toggle("active",btn.dataset.screen===id));
   }
@@ -244,16 +311,43 @@
     if(!session){
       $("headerBadge").textContent="상명대 · Beta";
       myProfile=null;
+      accessStatus=null;
       go("home");
       return;
     }
 
-    $("headerBadge").textContent="로그인됨";
     $("accountEmail").textContent=session.user.email||"";
+
+    try{
+      await loadAccessStatus();
+    }catch(error){
+      $("headerBadge").textContent="설정 필요";
+      $("verifyMessage").textContent=humanError(error);
+      $("verifyResendBtn").style.display="none";
+      go("verify");
+      return;
+    }
+
+    if(!accessStatus?.access_allowed){
+      $("headerBadge").textContent="학교 인증 필요";
+      const kind=accessStatus?.verification_status;
+      if(kind==="email_unconfirmed"){
+        $("verifyMessage").textContent="학교 이메일은 확인됐지만 이메일 인증이 아직 완료되지 않았습니다.";
+        $("verifyResendBtn").style.display="block";
+      }else{
+        $("verifyMessage").textContent="상명대 학교 이메일로 가입해야 이용할 수 있습니다.";
+        $("verifyResendBtn").style.display=isAllowedSchoolEmail(session.user.email||"")?"block":"none";
+      }
+      go("verify");
+      return;
+    }
+
+    $("headerBadge").textContent=verificationLabel(accessStatus.verification_status);
+    $("accountVerification").textContent=verificationLabel(accessStatus.verification_status);
 
     const {data:profile,error}=await db.from("profiles").select("*").eq("user_id",session.user.id).maybeSingle();
     if(error){
-      alert("프로필을 불러오지 못했습니다: "+error.message);
+      alert("프로필을 불러오지 못했습니다: "+humanError(error));
       return;
     }
 
@@ -276,8 +370,12 @@
       status("authStatus","이메일과 6자 이상의 비밀번호를 입력해주세요.","error");
       return;
     }
+    if(!isAllowedSchoolEmail(email)){
+      status("authStatus","상명대 학교 이메일로 가입해주세요.","error");
+      return;
+    }
     const {data,error}=await db.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin}});
-    if(error){status("authStatus",error.message,"error");return;}
+    if(error){status("authStatus",humanError(error),"error");return;}
     if(data.session){
       session=data.session;
       await routeFromSession();
@@ -289,7 +387,7 @@
   async function signIn(){
     status("authStatus","로그인 중...");
     const {data,error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
-    if(error){status("authStatus",error.message,"error");return;}
+    if(error){status("authStatus",humanError(error),"error");return;}
     session=data.session;
     status("authStatus","");
     await routeFromSession();
@@ -298,7 +396,7 @@
   async function signOut(){
     clearInterval(chatTimer);
     await db.auth.signOut();
-    session=null;myProfile=null;currentCandidate=null;myMatches=[];activeMatch=null;
+    session=null;myProfile=null;accessStatus=null;currentCandidate=null;myMatches=[];activeMatch=null;
     go("home");
   }
 
@@ -339,7 +437,7 @@
 
     status("profileStatus","저장 중...");
     const {error}=await db.from("profiles").upsert(profile,{onConflict:"user_id"});
-    if(error){status("profileStatus",error.message,"error");return;}
+    if(error){status("profileStatus",humanError(error),"error");return;}
 
     myProfile=profile;
     status("profileStatus","저장되었습니다.","ok");
@@ -364,7 +462,7 @@
 
     const {data,error}=await db.rpc("get_next_candidate");
     if(error){
-      status("discoverStatus",error.message,"error");
+      status("discoverStatus",humanError(error),"error");
       currentCandidate=null;
       renderCandidate();
       return;
@@ -395,7 +493,8 @@
         '<div class="profile-body">'+
           '<div class="profile-top"><h2>'+esc(p.nickname)+'</h2><span class="tag">'+esc(p.grade)+'</span>'+
           (p.mbti?'<span class="tag">'+esc(p.mbti)+'</span>':'')+
-          '<span class="tag">'+esc(p.relationship_intent)+'</span></div>'+
+          '<span class="tag">'+esc(p.relationship_intent)+'</span>'+
+          '<span class="tag">'+esc(verificationLabel(p.verification_status))+'</span></div>'+
           '<div class="intro">'+esc(p.bio)+'</div>'+
           '<div class="privacy-note">🔒 매칭되기 전에는 서로 대화할 수 없습니다.</div>'+
         '</div>'+
@@ -407,7 +506,7 @@
   async function skipCandidate(){
     const p=currentCandidate;if(!p)return;
     const {error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"pass"});
-    if(error){status("discoverStatus",error.message,"error");return;}
+    if(error){status("discoverStatus",humanError(error),"error");return;}
     currentCandidate=null;
     await loadCandidates();
   }
@@ -416,7 +515,7 @@
     const p=currentCandidate;if(!p)return;
     const {data,error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"like"});
     if(error){
-      status("discoverStatus",(error.message||"").includes("DAILY_LIKE_LIMIT_REACHED")?"오늘 보낼 수 있는 관심을 모두 사용했어요.":error.message,"error");
+      status("discoverStatus",humanError(error),"error");
       await updateDailyUsage();
       return;
     }
@@ -437,7 +536,7 @@
     const p=currentCandidate;if(!p)return;
     if(!confirm("이 사용자를 차단할까요? 서로의 프로필이 더 이상 보이지 않습니다."))return;
     const {error}=await db.from("blocks").upsert({blocker:session.user.id,blocked:p.user_id},{onConflict:"blocker,blocked"});
-    if(error){status("discoverStatus",error.message,"error");return;}
+    if(error){status("discoverStatus",humanError(error),"error");return;}
     currentCandidate=null;
     await loadCandidates();
     status("discoverStatus","차단했습니다.","ok");
@@ -447,7 +546,7 @@
     status("matchesStatus","매칭을 불러오는 중...");
     const {data,error}=await db.rpc("get_my_matches");
     if(error){
-      status("matchesStatus",error.message,"error");
+      status("matchesStatus",humanError(error),"error");
       myMatches=[];
       renderMatches();
       return;
@@ -466,7 +565,7 @@
     box.innerHTML=myMatches.map((m,i)=>
       '<div class="match-item">'+
         '<div class="match-main"><div class="avatar">🙂</div><div class="match-copy">'+
-          '<div class="match-name">'+esc(m.nickname)+' <span class="tag">'+esc(m.grade)+'</span> '+(m.mbti?'<span class="tag">'+esc(m.mbti)+'</span>':'')+'</div>'+
+          '<div class="match-name">'+esc(m.nickname)+' <span class="tag">'+esc(m.grade)+'</span> '+(m.mbti?'<span class="tag">'+esc(m.mbti)+'</span>':'')+' <span class="tag">'+esc(verificationLabel(m.verification_status))+'</span></div>'+
           '<div class="match-preview">'+esc(m.last_message||"아직 대화를 시작하지 않았어요")+'</div>'+
         '</div></div>'+
         '<button onclick="openChat('+i+')">대화 시작하기</button>'+
@@ -488,7 +587,7 @@
   async function loadMessages(){
     if(!activeMatch)return;
     const {data,error}=await db.from("messages").select("id,sender_id,content,created_at").eq("match_id",activeMatch.match_id).order("created_at",{ascending:true}).limit(200);
-    if(error){status("chatStatus",error.message,"error");return;}
+    if(error){status("chatStatus",humanError(error),"error");return;}
     status("chatStatus","");
     renderMessages(data||[]);
   }
@@ -515,7 +614,7 @@
     $("sendMessageBtn").disabled=true;
     const {error}=await db.from("messages").insert({match_id:activeMatch.match_id,sender_id:session.user.id,content});
     $("sendMessageBtn").disabled=false;
-    if(error){status("chatStatus",error.message,"error");return;}
+    if(error){status("chatStatus",humanError(error),"error");return;}
     $("messageInput").value="";
     await loadMessages();
   }
@@ -525,7 +624,7 @@
     const msg=block?"이 사용자를 차단하고 매칭을 종료할까요?":"이 매칭을 해제할까요?";
     if(!confirm(msg))return;
     const {error}=await db.rpc("end_match",{p_match_id:activeMatch.match_id,p_block:block});
-    if(error){status("chatStatus",error.message,"error");return;}
+    if(error){status("chatStatus",humanError(error),"error");return;}
     activeMatch=null;
     await loadMatches();
     go("matches");
@@ -557,7 +656,7 @@
       p_reason:$("reportReason").value.trim()||null,
       p_message_id:reportMessageId
     });
-    if(error){status("reportStatus",error.message,"error");return;}
+    if(error){status("reportStatus",humanError(error),"error");return;}
 
     closeReport();
     activeMatch=null;
@@ -570,20 +669,73 @@
     status(targetStatus,"신고가 접수되었고 상대를 차단했습니다.","ok");
   }
 
-  async function deleteMyProfile(){
+  async function loadBlockedUsers(){
+    status("blockedStatus","차단 목록을 불러오는 중...");
+    const {data,error}=await db.rpc("get_blocked_users");
+    if(error){
+      status("blockedStatus",humanError(error),"error");
+      $("blockedList").innerHTML="";
+      return;
+    }
+    status("blockedStatus","");
+    const rows=data||[];
+    if(!rows.length){
+      $("blockedList").innerHTML='<div class="small">차단한 사용자가 없습니다.</div>';
+      return;
+    }
+    $("blockedList").innerHTML=rows.map(row=>
+      '<div class="match-item">'+
+        '<div class="match-main"><div class="avatar">🚫</div><div class="match-copy">'+
+          '<div class="match-name">'+esc(row.nickname||"탈퇴한 사용자")+(row.grade?' <span class="tag">'+esc(row.grade)+'</span>':'')+'</div>'+
+          '<div class="match-preview">'+esc(verificationLabel(row.verification_status))+'</div>'+
+        '</div></div>'+
+        '<button onclick="unblockUser(\''+row.blocked_user_id+'\')">차단 해제</button>'+
+      '</div>'
+    ).join("");
+  }
+
+  async function unblockUser(userId){
+    if(!confirm("이 사용자의 차단을 해제할까요? 이전 매칭과 채팅은 자동 복구되지 않습니다."))return;
+    const {data,error}=await db.rpc("unblock_user",{p_user_id:userId});
+    if(error){status("blockedStatus",humanError(error),"error");return;}
+    await loadBlockedUsers();
+    status("blockedStatus",data?"차단을 해제했습니다.":"이미 차단이 해제된 사용자입니다.","ok");
+  }
+
+  async function resendVerification(targetStatusId="authStatus"){
+    const email=(session?.user?.email||$("email").value||"").trim();
+    if(!email||!isAllowedSchoolEmail(email)){
+      status(targetStatusId,"상명대 학교 이메일을 입력해주세요.","error");
+      return;
+    }
+    status(targetStatusId,"인증 메일을 보내는 중...");
+    const {error}=await db.auth.resend({
+      type:"signup",
+      email,
+      options:{emailRedirectTo:window.location.origin}
+    });
+    if(error){status(targetStatusId,humanError(error),"error");return;}
+    status(targetStatusId,"인증 메일을 다시 보냈습니다.","ok");
+  }
+
+  async function deleteMyAccount(){
     if(!session)return;
-    if(!confirm("내 프로필을 삭제할까요?"))return;
-    await db.from("likes").delete().eq("from_user",session.user.id);
-    await db.from("blocks").delete().eq("blocker",session.user.id);
-    const {error}=await db.from("profiles").delete().eq("user_id",session.user.id);
-    if(error){alert(error.message);return;}
-    myProfile=null;
-    await loadProfileForm();
-    go("register");
+    const first=confirm("회원 탈퇴 시 프로필, 매칭, 채팅 등 계정 데이터가 삭제됩니다. 계속할까요?");
+    if(!first)return;
+    const second=confirm("정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.");
+    if(!second)return;
+    const {error}=await db.rpc("delete_my_account");
+    if(error){alert(humanError(error));return;}
+    try{await db.auth.signOut();}catch{}
+    session=null;myProfile=null;accessStatus=null;currentCandidate=null;myMatches=[];activeMatch=null;
+    alert("회원 탈퇴가 완료되었습니다.");
+    go("home");
   }
 
   async function openAccount(){
     $("accountEmail").textContent=session?.user?.email||"";
+    $("accountVerification").textContent=verificationLabel(accessStatus?.verification_status);
+    await loadBlockedUsers();
     go("account");
   }
 
@@ -595,7 +747,11 @@
   $("registerLogoutBtn").addEventListener("click",signOut);
   $("accountLogoutBtn").addEventListener("click",signOut);
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
-  $("deleteProfileBtn").addEventListener("click",deleteMyProfile);
+  $("deleteAccountBtn").addEventListener("click",deleteMyAccount);
+  $("refreshBlocksBtn").addEventListener("click",loadBlockedUsers);
+  $("resendBtn").addEventListener("click",()=>resendVerification("authStatus"));
+  $("verifyResendBtn").addEventListener("click",()=>resendVerification("verifyStatus"));
+  $("verifyLogoutBtn").addEventListener("click",signOut);
   $("refreshMatchesBtn").addEventListener("click",loadMatches);
   $("backToMatchesBtn").addEventListener("click",async()=>{await loadMatches();go("matches");});
   $("sendMessageBtn").addEventListener("click",sendMessage);
