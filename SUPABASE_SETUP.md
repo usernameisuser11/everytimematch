@@ -7,6 +7,7 @@ Supabase 프로젝트 생성 후 SQL Editor에서 아래 순서대로 실행합�
 1. `supabase/schema.sql`
 2. `supabase/migrations/20261001_discovery_limits.sql`
 3. `supabase/migrations/20261001_matches_chat_reports.sql`
+4. `supabase/migrations/20261001_beta_readiness_school_verification.sql`
 
 각 파일을 전체 복사해서 **Run** 하면 됩니다.
 
@@ -16,48 +17,30 @@ Supabase 프로젝트 생성 후 SQL Editor에서 아래 순서대로 실행합�
 
 가 표시됩니다.
 
-## 현재 migration 역할
+## 4번째 migration 역할
 
-### 20261001_discovery_limits.sql
+`20261001_beta_readiness_school_verification.sql`
 
-- 찾는 상대: 남성 / 여성 / 상관없음
-- 찾는 관계: 친구 / 소개팅 / 둘 다
-- 하루 프로필 10명
-- 하루 관심 5개
-- 같은 날 재노출 방지
-- DB 함수 기반 후보 조회
+- 상명대 이메일 도메인 allowlist
+- 이메일 확인 완료 여부 검사
+- 학교 인증 안 된 신규 계정의 프로필/매칭/채팅 차단
+- 기존 Auth 계정을 beta tester로 자동 보존
+- 후보 및 매칭 목록에 인증 상태 제공
+- 차단 목록 조회
+- 차단 해제
+- 본인 회원 탈퇴
+- 주요 DB 함수에도 학교 인증 조건 적용
 
-### 20261001_matches_chat_reports.sql
+## 허용 도메인
 
-- matches 테이블
-- 기존 상호 좋아요 backfill
-- mutual like 발생 시 자동 match 생성
-- messages 테이블
-- 매칭 당사자 전용 채팅 RLS
-- 매칭 목록 RPC
-- 매칭 해제 / 차단 RPC
-- 프로필 신고
-- 메시지 신고
-- 신고 시 즉시 차단
-- 기존 private_contacts 제거
+현재 설정:
+- sangmyung.kr
+- smu.ac.kr
+- sangmyung.ac.kr
 
-## 연결 정보
+학교 인증은 이메일 주소 자체를 프로필에 저장하지 않고 Auth 정보에서 확인합니다.
 
-프론트엔드에서 사용하는 값:
-
-- Project URL
-- Publishable key
-
-브라우저에 넣으면 안 되는 값:
-
-- Secret key
-- service_role key
-- Database password
-- Database connection password/URI
-
-Publishable key는 공개 가능한 클라이언트 키이며 실제 접근 제한은 RLS로 처리합니다.
-
-## Authentication URL
+## Authentication 설정
 
 Authentication → URL Configuration:
 
@@ -66,6 +49,15 @@ Authentication → URL Configuration:
 
 예:
 `https://everytimematch-production.up.railway.app/`
+
+Authentication → Providers → Email에서 이메일 확인 기능이 켜져 있어야 학교 인증 흐름이 정상적으로 작동합니다.
+
+## 기존 테스트 계정
+
+4번째 migration을 실행하는 시점에 이미 존재하는 Auth 계정은 자동으로 `beta_testers`에 등록됩니다.
+
+따라서 기존 지인 테스트 계정은 일반 이메일이어도 계속 테스트할 수 있습니다.
+새로 만드는 계정부터는 학교 이메일 인증이 필요합니다.
 
 ## schema cache 오류
 
@@ -79,6 +71,16 @@ Authentication → URL Configuration:
 NOTIFY pgrst, 'reload schema';
 ```
 
-## 테스트
+## 보안
 
-DB 업데이트 후 `TEST_CHECKLIST.md` 순서대로 2개 이상의 계정으로 테스트합니다.
+브라우저에 넣어도 되는 값:
+- Project URL
+- Publishable key
+
+브라우저에 넣으면 안 되는 값:
+- Secret key
+- service_role key
+- Database password
+- Database connection URI
+
+DB 업데이트 후 `TEST_CHECKLIST.md` 순서대로 테스트합니다.
