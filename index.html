@@ -337,7 +337,10 @@
       provider:"azure",
       options:{
         scopes:"email",
-        redirectTo:window.location.origin
+        redirectTo:window.location.origin,
+        queryParams:{
+          prompt:"select_account"
+        }
       }
     });
     if(error){
@@ -392,6 +395,9 @@
 
     if(!myProfile){
       await loadProfileForm();
+      if(accessStatus?.verification_status==="school_verified"){
+        status("profileStatus","✓ 상명대 Microsoft 계정 인증이 완료되었습니다.","ok");
+      }
       go("register");
     }else{
       await loadCandidates();
@@ -786,7 +792,12 @@
     });
   });
 
-  db.auth.onAuthStateChange((_event,newSession)=>{session=newSession;});
+  db.auth.onAuthStateChange((event,newSession)=>{
+    session=newSession;
+    if(event==="SIGNED_IN" && newSession){
+      setTimeout(()=>routeFromSession(),0);
+    }
+  });
   init();
 </script>
 </body>
