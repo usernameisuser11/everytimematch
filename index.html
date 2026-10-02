@@ -64,6 +64,19 @@
     .modal{width:min(460px,100%);background:#fff;border-radius:22px 22px 0 0;padding:22px 20px 28px}.modal h3{margin-bottom:16px}.modal .actions{grid-template-columns:1fr 1fr}
     .otp-input{font-size:26px;letter-spacing:8px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
     .mail-tip{margin-top:10px;padding:12px 13px;border-radius:12px;background:#fff8e8;color:#775a1c;font-size:12px;line-height:1.55}
+    .verify-summary{margin:0 0 16px;padding:15px 16px;border:1px solid #dcefe4;border-radius:14px;background:#f3fbf6}
+    .verify-summary strong{display:block;color:#256b45;font-size:14px;margin-bottom:5px}
+    .verify-summary .small{color:#547060}
+    .mail-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+    .mail-actions a{display:block;text-align:center;text-decoration:none}
+    .help-box{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:#fafafa;overflow:hidden}
+    .help-box summary{cursor:pointer;list-style:none;padding:14px 15px;font-size:13px;font-weight:750;color:#555a61}
+    .help-box summary::-webkit-details-marker{display:none}
+    .help-box summary::after{content:"＋";float:right;color:#8b8f95}
+    .help-box[open] summary::after{content:"－"}
+    .help-content{padding:0 15px 15px;color:#6f7379;font-size:12px;line-height:1.7}
+    .help-content ol{margin:6px 0 0;padding-left:20px}
+    .resend-note{margin-top:9px;text-align:center;color:#8a8e94;font-size:11px;line-height:1.45}
     .unofficial-banner{padding:9px 14px;text-align:center;background:#fff8e8;border-bottom:1px solid #f1e2b8;color:#6d561e;font-size:11px;font-weight:750;line-height:1.45}
     .legal-links{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:18px}
     .legal-link{border:0;background:none;padding:0;color:#777c83;text-decoration:underline;font-size:12px}
@@ -102,7 +115,8 @@
     <div class="field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상"></div>
     <div class="notice" style="margin-top:0">
       처음 가입하시는 분은 <strong>학교 이메일로 가입하기</strong>를 눌러주세요.<br>
-      가입 후 학교 메일로 8자리 인증코드를 보내드립니다.
+      가입 후 <strong>학교 Outlook 메일</strong>로 8자리 인증코드를 보내드립니다.<br>
+      <span class="small">인증번호는 샘물포털 → Office 365 또는 Outlook 받은편지함에서 확인할 수 있습니다.</span>
     </div>
     <div class="small" style="margin-top:10px">허용 도메인: @sangmyung.kr / @smu.ac.kr / @sangmyung.ac.kr</div>
     <button class="primary" id="signupBtn">학교 이메일로 가입하기</button>
@@ -118,15 +132,36 @@
   <section id="verifyCode" class="screen">
     <div class="section-head">
       <h2>학교 이메일 인증</h2>
-      <p class="muted"><span id="verifyCodeEmail"></span>로 발송된 인증코드를 입력해주세요.</p>
+      <p class="muted">학교 메일에서 인증코드를 확인해주세요.</p>
     </div>
-    <div class="field">
+    <div class="verify-summary">
+      <strong>📩 인증번호를 전송했어요</strong>
+      <div class="small"><span id="verifyCodeEmail"></span>로 8자리 인증코드를 보냈습니다.</div>
+    </div>
+    <div class="mail-actions">
+      <a class="secondary" href="https://outlook.office.com/mail/" target="_blank" rel="noopener noreferrer" style="margin-top:0">학교 Outlook 메일 확인하기</a>
+    </div>
+    <div class="mail-tip">메일이 보이지 않으면 <strong>받은편지함 · 스팸메일함 · 정크메일함</strong>을 확인해주세요.</div>
+    <details class="help-box">
+      <summary>학교 메일이 열리지 않나요?</summary>
+      <div class="help-content">
+        인증번호 전송과 학교 Office 365 접속은 서로 다른 과정입니다. Outlook에서 오류 화면이 뜬다면 아래 순서대로 확인해주세요.
+        <ol>
+          <li>Outlook 페이지 새로고침</li>
+          <li>학교 계정 로그아웃 후 다시 로그인</li>
+          <li>Safari·Chrome 등 다른 브라우저에서 접속</li>
+          <li>시크릿/개인정보 보호 모드에서 다시 접속</li>
+        </ol>
+        계속 오류가 나면 오류 화면을 캡처해 운영자에게 보내주세요.
+      </div>
+    </details>
+    <div class="field" style="margin-top:20px">
       <label for="emailOtp">8자리 인증코드</label>
       <input id="emailOtp" class="otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000">
     </div>
-    <div class="mail-tip">📬 메일이 받은편지함에 없으면 <strong>스팸메일함 / 정크메일함</strong>을 확인해주세요. 인증 메일이 분류될 수 있습니다.</div>
     <button class="primary" id="verifyCodeBtn">학교 인증 완료</button>
     <button class="secondary" id="verifyCodeResendBtn">인증코드 다시 보내기</button>
+    <div id="verifyCodeResendNote" class="resend-note">재전송하면 가장 최근에 받은 인증코드를 사용해주세요.</div>
     <button class="secondary" id="verifyCodeBackBtn">이메일 다시 입력</button>
     <div id="verifyCodeStatus" class="status"></div>
   </section>
@@ -327,6 +362,8 @@
   let myProfile = null;
   let accessStatus = null;
   let pendingVerificationEmail = sessionStorage.getItem("everytimematch_pending_email") || "";
+  let verificationResendAt = Number(sessionStorage.getItem("everytimematch_resend_at") || 0);
+  let verificationResendTimer = null;
   let currentCandidate = null;
   let myMatches = [];
   let activeMatch = null;
@@ -362,6 +399,7 @@
     const msg=String(error?.message||error||"");
     if(msg.includes("Email not confirmed"))return "이메일 인증이 아직 완료되지 않았습니다.";
     if(msg.includes("Invalid login credentials"))return "이메일 또는 비밀번호를 확인해주세요.";
+    if(msg.toLowerCase().includes("rate limit")||msg.toLowerCase().includes("only request this after"))return "인증번호를 너무 자주 요청했습니다. 잠시 후 다시 시도해주세요.";
     if(msg.includes("SCHOOL_VERIFICATION_REQUIRED"))return "상명대 이메일 인증이 필요합니다.";
     if(msg.includes("TARGET_NOT_VERIFIED"))return "상대방의 학교 인증 상태를 확인할 수 없습니다.";
     if(msg.includes("REPORT_TARGET_NOT_AVAILABLE"))return "현재 신고할 수 없는 사용자입니다. 화면을 새로고침한 뒤 다시 시도해주세요.";
@@ -427,6 +465,34 @@
     await routeFromSession();
   }
 
+  function updateVerificationResendButton(){
+    const btn=$("verifyCodeResendBtn");
+    const note=$("verifyCodeResendNote");
+    if(!btn)return;
+    const remaining=Math.max(0,Math.ceil((verificationResendAt-Date.now())/1000));
+    if(remaining>0){
+      btn.disabled=true;
+      btn.textContent="인증코드 다시 보내기 ("+remaining+"초)";
+      if(note)note.textContent="잠시 후 다시 보낼 수 있어요. 재전송 후에는 가장 최근 메일의 인증코드를 사용해주세요.";
+    }else{
+      btn.disabled=false;
+      btn.textContent="인증코드 다시 보내기";
+      if(note)note.textContent="재전송하면 가장 최근에 받은 인증코드를 사용해주세요.";
+      if(verificationResendTimer){
+        clearInterval(verificationResendTimer);
+        verificationResendTimer=null;
+      }
+    }
+  }
+
+  function startVerificationResendCooldown(seconds=60){
+    verificationResendAt=Date.now()+seconds*1000;
+    sessionStorage.setItem("everytimematch_resend_at",String(verificationResendAt));
+    if(verificationResendTimer)clearInterval(verificationResendTimer);
+    updateVerificationResendButton();
+    verificationResendTimer=setInterval(updateVerificationResendButton,1000);
+  }
+
   function openVerifyCode(email){
     pendingVerificationEmail=String(email||"").trim().toLowerCase();
     if(pendingVerificationEmail){
@@ -435,6 +501,10 @@
     $("verifyCodeEmail").textContent=pendingVerificationEmail;
     $("emailOtp").value="";
     status("verifyCodeStatus","");
+    updateVerificationResendButton();
+    if(verificationResendAt>Date.now()&&!verificationResendTimer){
+      verificationResendTimer=setInterval(updateVerificationResendButton,1000);
+    }
     go("verifyCode");
   }
 
@@ -563,7 +633,8 @@
       await routeFromSession();
     }else{
       openVerifyCode(email);
-      status("verifyCodeStatus","가입이 완료되었습니다. 학교 메일로 보낸 8자리 인증코드를 입력해주세요. 메일이 안 보이면 스팸/정크메일함도 확인해주세요.","ok");
+      startVerificationResendCooldown(60);
+      status("verifyCodeStatus","인증번호 전송이 완료되었습니다. 학교 Outlook 메일에서 8자리 인증코드를 확인해주세요.","ok");
     }
   }
 
@@ -925,12 +996,17 @@
   }
 
   async function resendVerification(targetStatusId="authStatus"){
-    const email=(session?.user?.email||$("email").value||"").trim();
+    const email=(session?.user?.email||pendingVerificationEmail||$("email").value||"").trim();
     if(!email||!isAllowedSchoolEmail(email)){
       status(targetStatusId,"상명대 학교 이메일을 입력해주세요.","error");
       return;
     }
-    status(targetStatusId,"인증 메일을 보내는 중...");
+    if(!session && verificationResendAt>Date.now()){
+      updateVerificationResendButton();
+      status(targetStatusId,"아직 재전송 대기시간이 남아 있습니다. 잠시 후 다시 시도해주세요.","error");
+      return;
+    }
+    status(targetStatusId,"인증번호를 보내는 중...");
     const {error}=await db.auth.resend({
       type:"signup",
       email,
@@ -939,9 +1015,10 @@
     if(error){status(targetStatusId,humanError(error),"error");return;}
     if(!session){
       openVerifyCode(email);
-      status("verifyCodeStatus","새 인증코드를 보냈습니다. 스팸/정크메일함도 확인해주세요.","ok");
+      startVerificationResendCooldown(60);
+      status("verifyCodeStatus","새 인증번호를 보냈습니다. 가장 최근에 받은 메일의 8자리 인증코드를 입력해주세요.","ok");
     }else{
-      status(targetStatusId,"인증 메일을 다시 보냈습니다. 스팸/정크메일함도 확인해주세요.","ok");
+      status(targetStatusId,"인증 메일을 다시 보냈습니다. 받은편지함과 스팸/정크메일함을 확인해주세요.","ok");
     }
   }
 
