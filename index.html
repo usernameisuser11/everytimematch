@@ -62,6 +62,8 @@
     .msg-meta{font-size:10px;color:#aaa;margin-top:3px}.msg-report{border:0;background:none;color:#aaa;font-size:10px;padding:2px 0;margin-top:2px}
     .composer{display:flex;gap:8px;position:sticky;bottom:68px;background:#fff;padding-top:10px}.composer input{flex:1}.composer button{border:0;background:var(--accent);color:#fff;border-radius:12px;padding:0 16px;font-weight:750}
     .account-card{padding:16px;border:1px solid var(--line);border-radius:16px;background:#fafafa}.account-card strong{display:block;margin-bottom:6px}
+    .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.admin-card{border:1px solid var(--line);border-radius:17px;padding:14px;background:#fff;min-width:0}.admin-card h3{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.admin-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.admin-bio{margin-top:10px;color:#5f646b;font-size:12px;line-height:1.55;min-height:38px}.admin-like{width:100%;margin-top:12px;border:0;border-radius:11px;padding:10px 8px;font-size:12px;font-weight:800;color:#fff;background:var(--accent)}.admin-like:disabled{background:#efc2ca;color:#fff;cursor:default}.admin-count{font-size:12px;color:#777c83;margin-bottom:12px}.admin-warning{margin-bottom:14px;padding:12px 13px;border-radius:12px;background:#fff8e8;color:#6d561e;font-size:12px;line-height:1.6}
+    @media(max-width:380px){.admin-grid{grid-template-columns:1fr}}
     .bottom-nav{display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(460px,100%);height:66px;background:rgba(255,255,255,.97);border-top:1px solid var(--line);z-index:30;grid-template-columns:repeat(3,1fr);backdrop-filter:blur(12px)}
     .bottom-nav.show{display:grid}.bottom-nav button{border:0;background:none;color:#92969c;font-size:11px;font-weight:700}.bottom-nav button.active{color:var(--accent)}
     .nav-icon{display:block;font-size:20px;margin-bottom:2px}
@@ -259,6 +261,7 @@
     </div>
 
     <button class="primary" id="editProfileBtn">프로필 수정</button>
+    <button class="secondary" id="adminConsoleBtn" style="display:none">관리자 전체 프로필 보기</button>
 
     <div class="section-head" style="margin-top:30px;margin-bottom:14px">
       <h3>차단한 사용자</h3>
@@ -275,6 +278,16 @@
     </div>
     <button class="secondary" id="accountLogoutBtn" style="margin-top:28px">로그아웃</button>
     <button class="danger" id="deleteAccountBtn">회원 탈퇴</button>
+  </section>
+
+  <section id="adminConsole" class="screen">
+    <div class="section-head"><h2>관리자 전체 프로필</h2><p class="muted">활성 상태의 공개 프로필을 한 화면에서 확인하고 관리자 권한으로 호감을 보낼 수 있습니다.</p></div>
+    <div class="admin-warning">관리자 화면에는 다른 사용자에게 원래 공개되는 프로필 정보만 표시합니다. 학교 이메일·비밀번호·개인 연락처는 표시하지 않습니다.</div>
+    <button class="secondary" id="refreshAdminProfilesBtn" style="margin-top:0">전체 프로필 새로고침</button>
+    <button class="secondary" id="backFromAdminBtn">내 프로필로 돌아가기</button>
+    <div id="adminProfilesStatus" class="status"></div>
+    <div id="adminProfileCount" class="admin-count"></div>
+    <div id="adminProfileGrid" class="admin-grid"></div>
   </section>
 
   <section id="privacy" class="screen legal-doc">
@@ -374,6 +387,8 @@
   let session = null;
   let myProfile = null;
   let accessStatus = null;
+  let isAdmin = false;
+  let adminProfiles = [];
   let pendingVerificationEmail = sessionStorage.getItem("everytimematch_pending_email") || "";
   let verificationResendAt = Number(sessionStorage.getItem("everytimematch_resend_at") || 0);
   let verificationResendTimer = null;
@@ -433,6 +448,19 @@
     if(error)throw error;
     accessStatus=data?.[0]||null;
     return accessStatus;
+  }
+
+  async function loadAdminStatus(){
+    if(!session){isAdmin=false;return false;}
+    const {data,error}=await db.rpc("get_my_admin_status");
+    if(error){
+      console.warn("admin status unavailable",error);
+      isAdmin=false;
+    }else{
+      isAdmin=Boolean(data?.[0]?.is_admin);
+    }
+    $("adminConsoleBtn").style.display=isAdmin?"block":"none";
+    return isAdmin;
   }
 
   function go(id){
@@ -560,6 +588,9 @@
       $("headerBadge").textContent="상명대 · Beta";
       myProfile=null;
       accessStatus=null;
+      isAdmin=false;
+      adminProfiles=[];
+      $("adminConsoleBtn").style.display="none";
       go("home");
       return;
     }
@@ -592,6 +623,8 @@
 
     $("headerBadge").textContent=verificationLabel(accessStatus.verification_status);
     $("accountVerification").textContent=verificationLabel(accessStatus.verification_status);
+    await loadAdminStatus();
+    if(isAdmin)$("headerBadge").textContent="관리자 · "+verificationLabel(accessStatus.verification_status);
 
     const {data:profile,error}=await db.from("profiles").select("*").eq("user_id",session.user.id).maybeSingle();
     if(error){
@@ -674,7 +707,7 @@
   async function signOut(){
     clearInterval(chatTimer);
     await db.auth.signOut();
-    session=null;myProfile=null;accessStatus=null;currentCandidate=null;myMatches=[];activeMatch=null;
+    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
     go("home");
   }
 
@@ -847,7 +880,7 @@
       return;
     }
 
-    const likeLimitReached=Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit);
+    const likeLimitReached=!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit);
     area.innerHTML=
       '<div class="profile-card">'+
         '<div class="photo">🙂</div>'+
@@ -874,8 +907,18 @@
 
   async function likeCandidate(){
     const p=currentCandidate;if(!p)return;
-    if(Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
+    if(!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
       status("discoverStatus",discoveryEvent.active?"이번 이벤트의 5명을 모두 선택했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
+      return;
+    }
+    if(isAdmin){
+      const {data,error}=await db.rpc("admin_send_like",{p_target_user:p.user_id});
+      if(error){status("discoverStatus",humanError(error),"error");return;}
+      const matched=Boolean(data?.[0]?.matched);
+      currentCandidate=null;
+      if(matched){go("matchSuccess");return;}
+      await loadCandidates();
+      status("discoverStatus","관리자 권한으로 호감을 보냈어요.","ok");
       return;
     }
     const {data,error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"like"});
@@ -1111,9 +1154,61 @@
     const {error}=await db.rpc("delete_my_account");
     if(error){alert(humanError(error));return;}
     try{await db.auth.signOut();}catch{}
-    session=null;myProfile=null;accessStatus=null;currentCandidate=null;myMatches=[];activeMatch=null;
+    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
     alert("회원 탈퇴가 완료되었습니다.");
     go("home");
+  }
+
+  async function loadAdminProfiles(){
+    if(!isAdmin)return;
+    status("adminProfilesStatus","전체 프로필을 불러오는 중...");
+    const {data,error}=await db.rpc("get_admin_profiles");
+    if(error){
+      status("adminProfilesStatus",humanError(error),"error");
+      adminProfiles=[];
+      renderAdminProfiles();
+      return;
+    }
+    adminProfiles=data||[];
+    status("adminProfilesStatus","");
+    renderAdminProfiles();
+  }
+
+  function renderAdminProfiles(){
+    $("adminProfileCount").textContent="현재 확인 가능한 프로필 "+adminProfiles.length+"명";
+    const grid=$("adminProfileGrid");
+    if(!adminProfiles.length){
+      grid.innerHTML='<div class="small">확인 가능한 프로필이 없습니다.</div>';
+      return;
+    }
+    grid.innerHTML=adminProfiles.map((p,i)=>
+      '<div class="admin-card">'+
+        '<h3>'+esc(p.nickname)+'</h3>'+
+        '<div class="admin-meta"><span class="tag">'+esc(p.grade)+'</span>'+
+          (p.mbti?'<span class="tag">'+esc(p.mbti)+'</span>':'')+
+          '<span class="tag">'+esc(p.gender)+'</span><span class="tag">'+esc(p.relationship_intent)+'</span></div>'+
+        '<div class="admin-bio">'+esc(p.bio)+'</div>'+
+        '<button class="admin-like" '+(p.liked_by_me?'disabled':'')+' onclick="adminLikeProfile('+i+')">'+(p.liked_by_me?(p.matched_with_me?'💞 매칭됨':'♡ 호감 보냄'):'♡ 호감 보내기')+'</button>'+
+      '</div>'
+    ).join("");
+  }
+
+  async function adminLikeProfile(index){
+    if(!isAdmin)return;
+    const p=adminProfiles[index];
+    if(!p||p.liked_by_me)return;
+    const {data,error}=await db.rpc("admin_send_like",{p_target_user:p.user_id});
+    if(error){status("adminProfilesStatus",humanError(error),"error");return;}
+    p.liked_by_me=true;
+    p.matched_with_me=Boolean(data?.[0]?.matched);
+    renderAdminProfiles();
+    status("adminProfilesStatus",p.matched_with_me?"서로 호감이 맞아 매칭됐어요.":"관리자 권한으로 호감을 보냈어요.","ok");
+  }
+
+  async function openAdminConsole(){
+    if(!isAdmin)return;
+    go("adminConsole");
+    await loadAdminProfiles();
   }
 
   async function openAccount(){
@@ -1131,6 +1226,9 @@
   $("registerLogoutBtn").addEventListener("click",signOut);
   $("accountLogoutBtn").addEventListener("click",signOut);
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
+  $("adminConsoleBtn").addEventListener("click",openAdminConsole);
+  $("refreshAdminProfilesBtn").addEventListener("click",loadAdminProfiles);
+  $("backFromAdminBtn").addEventListener("click",openAccount);
   $("deleteAccountBtn").addEventListener("click",deleteMyAccount);
   $("refreshBlocksBtn").addEventListener("click",loadBlockedUsers);
   $("verifyCodeBtn").addEventListener("click",verifySignupCode);
