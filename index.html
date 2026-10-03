@@ -43,6 +43,11 @@
     .actions{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:16px}.actions button{border:0;border-radius:14px;padding:15px 12px;font-weight:750}
     .skip{color:#5b6066;background:#f0f0f3}.like{color:#fff;background:var(--accent)}
     .minor-actions{display:flex;justify-content:center;gap:22px;margin-top:17px}.minor-actions button{border:0;background:none;color:#9a9ea4;font-size:12px}
+    .like:disabled{opacity:.48;cursor:not-allowed}
+    .milestone-event{margin:0 0 16px;padding:18px;border:1px solid #f2ccd3;border-radius:18px;background:linear-gradient(145deg,#fff7f8,#fff);box-shadow:0 8px 24px rgba(230,95,114,.08)}
+    .milestone-event[hidden]{display:none}.event-kicker{font-size:11px;font-weight:800;color:var(--accent-dark);letter-spacing:.2px}.event-title{margin-top:6px;font-size:22px;font-weight:850;letter-spacing:-.5px}
+    .event-copy{margin-top:10px;color:#555a61;font-size:14px;line-height:1.75}.event-copy strong{color:#2f3338}.event-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.event-pill{padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #f0dce0;color:#666a70;font-size:11px;font-weight:750}
+    .event-choices{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}.event-choice{height:5px;border-radius:999px;background:#f0e1e4}.event-choice.used{background:var(--accent)}.event-note{margin-top:10px;color:#8a8e94;font-size:11px;line-height:1.55}
     .empty{text-align:center;padding:72px 20px 20px}.empty-icon{font-size:52px;margin-bottom:18px}.empty h3{margin-bottom:10px;font-size:19px}
     .match-success{text-align:center;padding-top:52px}.match-icon{width:96px;height:96px;margin:0 auto 20px;border-radius:28px;background:var(--soft);display:grid;place-items:center;font-size:46px}
     .match-list{display:flex;flex-direction:column;gap:10px}
@@ -201,6 +206,14 @@
 
   <section id="discover" class="screen">
     <div class="section-head"><h2>오늘의 인연</h2><p class="muted">서로 관심을 보냈을 때만 매칭됩니다.</p></div>
+    <div id="milestoneEvent" class="milestone-event" hidden>
+      <div class="event-kicker">50명 기념 · 48시간 한정</div>
+      <div class="event-title">🎊 50명 달성</div>
+      <div class="event-copy">오늘부터 48시간<br><strong>모든 프로필이 공개됩니다</strong><br>단 당신이 선택할 수 있는 사람은 <strong>5명뿐입니다</strong></div>
+      <div class="event-meta"><span class="event-pill" id="eventRemaining">남은 시간 계산 중</span><span class="event-pill" id="eventLikeCount">0 / 5 선택</span></div>
+      <div class="event-choices" id="eventChoices" aria-hidden="true"></div>
+      <div class="event-note">서로의 성별 선호와 관계 조건이 맞는 프로필만 표시되며 차단·신고 기능은 그대로 유지됩니다.</div>
+    </div>
     <div id="dailyLimits" class="limit-bar"><span>오늘 프로필 <strong>- / 10</strong></span><span>관심 <strong>- / 5</strong></span></div>
     <div id="discoverStatus" class="status"></div>
     <div id="profileArea"></div>
@@ -369,6 +382,7 @@
   let activeMatch = null;
   let chatTimer = null;
   let dailyUsage = {views_used:0,views_limit:10,likes_used:0,likes_limit:5};
+  let discoveryEvent = {active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
   let reportTarget = null;
   let reportMessageId = null;
   let reportReturnScreen = "discover";
@@ -405,6 +419,7 @@
     if(msg.includes("REPORT_TARGET_NOT_AVAILABLE"))return "현재 신고할 수 없는 사용자입니다. 화면을 새로고침한 뒤 다시 시도해주세요.";
     if(msg.includes("INVALID_REPORT_MESSAGE"))return "신고할 메시지를 확인할 수 없습니다. 대화를 새로고침한 뒤 다시 시도해주세요.";
     if(msg.includes("INVALID_REPORT_CATEGORY"))return "신고 사유를 다시 선택해주세요.";
+    if(msg.includes("EVENT_LIKE_LIMIT_REACHED"))return "이번 50명 이벤트에서 선택할 수 있는 5명을 모두 선택했어요.";
     if(msg.includes("DAILY_LIKE_LIMIT_REACHED"))return "오늘 보낼 수 있는 관심을 모두 사용했어요.";
     if(msg.includes("PROFILE_ALREADY_DECIDED"))return "이미 선택한 프로필입니다.";
     if(msg.includes("PROFILE_NOT_VIEWED_TODAY"))return "오늘 확인한 프로필이 아닙니다.";
@@ -730,14 +745,69 @@
     go("discover");
   }
 
+  function eventRemainingText(){
+    if(!discoveryEvent.active||!discoveryEvent.ends_at)return "";
+    const ms=new Date(discoveryEvent.ends_at).getTime()-Date.now();
+    if(ms<=0)return "이벤트 종료";
+    const mins=Math.max(1,Math.ceil(ms/60000));
+    const days=Math.floor(mins/1440);
+    const hours=Math.floor((mins%1440)/60);
+    const minutes=mins%60;
+    if(days>0)return "⏳ "+days+"일 "+hours+"시간 남음";
+    if(hours>0)return "⏳ "+hours+"시간 "+minutes+"분 남음";
+    return "⏳ "+minutes+"분 남음";
+  }
+
+  function renderDiscoveryEvent(){
+    const box=$("milestoneEvent");
+    if(!box)return;
+    if(!discoveryEvent.active||!discoveryEvent.ends_at||new Date(discoveryEvent.ends_at).getTime()<=Date.now()){
+      discoveryEvent.active=false;
+      box.hidden=true;
+      return;
+    }
+    box.hidden=false;
+    const used=Math.min(5,Number(dailyUsage.likes_used||discoveryEvent.likes_used||0));
+    $("eventRemaining").textContent=eventRemainingText();
+    $("eventLikeCount").textContent=used+" / 5 선택";
+    $("eventChoices").innerHTML=Array.from({length:5},(_,i)=>'<span class="event-choice '+(i<used?"used":"")+'"></span>').join("");
+  }
+
+  async function updateDiscoveryEventStatus(){
+    const {data,error}=await db.rpc("get_discovery_event_status");
+    if(error){
+      console.warn("event status unavailable",error);
+      discoveryEvent={active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
+      renderDiscoveryEvent();
+      return;
+    }
+    const row=data?.[0];
+    discoveryEvent={
+      active:Boolean(row?.event_active),
+      starts_at:row?.starts_at||null,
+      ends_at:row?.ends_at||null,
+      likes_used:Number(row?.likes_used||0),
+      likes_limit:Number(row?.likes_limit||5)
+    };
+    renderDiscoveryEvent();
+  }
+
   async function updateDailyUsage(){
+    await updateDiscoveryEventStatus();
     const {data,error}=await db.rpc("get_daily_discovery_status");
     if(error){console.error(error);return;}
     const row=data?.[0];
     if(row)dailyUsage=row;
-    $("dailyLimits").innerHTML=
-      '<span>오늘 프로필 <strong>'+dailyUsage.views_used+' / '+dailyUsage.views_limit+'</strong></span>'+
-      '<span>관심 <strong>'+dailyUsage.likes_used+' / '+dailyUsage.likes_limit+'</strong></span>';
+    if(discoveryEvent.active){
+      $("dailyLimits").innerHTML=
+        '<span>프로필 <strong>전체 공개</strong></span>'+
+        '<span>선택 <strong>'+dailyUsage.likes_used+' / '+dailyUsage.likes_limit+'</strong></span>';
+    }else{
+      $("dailyLimits").innerHTML=
+        '<span>오늘 프로필 <strong>'+dailyUsage.views_used+' / '+dailyUsage.views_limit+'</strong></span>'+
+        '<span>관심 <strong>'+dailyUsage.likes_used+' / '+dailyUsage.likes_limit+'</strong></span>';
+    }
+    renderDiscoveryEvent();
   }
 
   async function loadCandidates(){
@@ -757,7 +827,8 @@
     await updateDailyUsage();
 
     if(!currentCandidate){
-      status("discoverStatus",dailyUsage.views_used>=dailyUsage.views_limit?"오늘 볼 수 있는 프로필을 모두 확인했어요.":"조건에 맞는 다른 프로필이 아직 없습니다.");
+      if(discoveryEvent.active)status("discoverStatus","현재 조건에 맞는 프로필을 모두 확인했어요. 이벤트 중 새 사용자가 들어오면 다시 확인해보세요.");
+      else status("discoverStatus",dailyUsage.views_used>=dailyUsage.views_limit?"오늘 볼 수 있는 프로필을 모두 확인했어요.":"조건에 맞는 다른 프로필이 아직 없습니다.");
     }else status("discoverStatus","");
 
     renderCandidate();
@@ -767,11 +838,16 @@
     const area=$("profileArea");
     const p=currentCandidate;
     if(!p){
-      const exhausted=dailyUsage.views_used>=dailyUsage.views_limit;
-      area.innerHTML='<div class="empty"><div class="empty-icon">🌙</div><h3>'+(exhausted?'오늘 준비된 프로필을 모두 봤어요':'지금 볼 수 있는 프로필이 없어요')+'</h3><p class="muted">'+(exhausted?'내일 다시 새로운 후보를 확인해보세요.':'새로운 사용자가 들어오면 다시 확인해보세요.')+'</p></div>';
+      if(discoveryEvent.active){
+        area.innerHTML='<div class="empty"><div class="empty-icon">🎉</div><h3>이벤트 프로필을 모두 확인했어요</h3><p class="muted">서로 조건이 맞는 프로필은 모두 확인했습니다.<br>새 사용자가 들어오면 다시 확인해보세요.</p></div>';
+      }else{
+        const exhausted=dailyUsage.views_used>=dailyUsage.views_limit;
+        area.innerHTML='<div class="empty"><div class="empty-icon">🌙</div><h3>'+(exhausted?'오늘 준비된 프로필을 모두 봤어요':'지금 볼 수 있는 프로필이 없어요')+'</h3><p class="muted">'+(exhausted?'내일 다시 새로운 후보를 확인해보세요.':'새로운 사용자가 들어오면 다시 확인해보세요.')+'</p></div>';
+      }
       return;
     }
 
+    const likeLimitReached=Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit);
     area.innerHTML=
       '<div class="profile-card">'+
         '<div class="photo">🙂</div>'+
@@ -784,7 +860,7 @@
           '<div class="privacy-note">🔒 매칭되기 전에는 서로 대화할 수 없습니다.</div>'+
         '</div>'+
       '</div>'+
-      '<div class="actions"><button class="skip" onclick="skipCandidate()">넘기기</button><button class="like" onclick="likeCandidate()">♡ 관심 있어요</button></div>'+
+      '<div class="actions"><button class="skip" onclick="skipCandidate()">넘기기</button><button class="like" onclick="likeCandidate()" '+(likeLimitReached?'disabled':'')+'>'+(likeLimitReached?'선택 완료 (5/5)':'♡ 관심 있어요')+'</button></div>'+
       '<div class="minor-actions"><button onclick="openReport(currentCandidate.user_id,null,\'discover\')">신고</button><button onclick="blockCandidate()">차단</button></div>';
   }
 
@@ -798,6 +874,10 @@
 
   async function likeCandidate(){
     const p=currentCandidate;if(!p)return;
+    if(Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
+      status("discoverStatus",discoveryEvent.active?"이번 이벤트의 5명을 모두 선택했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
+      return;
+    }
     const {data,error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"like"});
     if(error){
       status("discoverStatus",humanError(error),"error");
@@ -1096,6 +1176,7 @@
   });
 
   db.auth.onAuthStateChange((_event,newSession)=>{session=newSession;});
+  setInterval(()=>{if(discoveryEvent.active)renderDiscoveryEvent();},30000);
   init();
 </script>
 </body>
