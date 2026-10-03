@@ -64,6 +64,7 @@
     .match-main{display:flex;align-items:center;gap:12px}.avatar{width:48px;height:48px;border-radius:15px;background:var(--soft);display:grid;place-items:center;font-size:23px;flex:none}
     .match-copy{min-width:0;flex:1}.match-name{font-weight:800}.match-preview{font-size:12px;color:#85898f;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .match-item button{margin-top:12px;width:100%;border:0;background:#f6f6f8;border-radius:11px;padding:11px;font-weight:700;color:#555a61}
+    .passed-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.passed-bio{margin-top:10px;color:#5f646b;font-size:13px;line-height:1.55}.passed-date{margin-top:8px;color:#a0a3a8;font-size:11px}.passed-like{background:var(--accent)!important;color:#fff!important}.passed-like:disabled{opacity:.48;cursor:not-allowed}
     .chat-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}.chat-head button{border:0;background:#f3f3f5;border-radius:10px;padding:9px 11px}.chat-title{flex:1}.chat-actions{display:flex;gap:6px}
     .messages{min-height:380px;max-height:58vh;overflow-y:auto;padding:8px 0 18px;display:flex;flex-direction:column;gap:9px}
     .msg-row{display:flex;flex-direction:column;max-width:82%}.msg-row.mine{align-self:flex-end;align-items:flex-end}.msg-row.other{align-self:flex-start;align-items:flex-start}
@@ -226,8 +227,17 @@
       <div class="event-note">서로의 성별 선호와 관계 조건이 맞는 프로필만 표시되며 차단·신고 기능은 그대로 유지됩니다.</div>
     </div>
     <div id="dailyLimits" class="limit-bar"><span>오늘 프로필 <strong>- / 10</strong></span><span>관심 <strong>- / 5</strong></span></div>
+    <button class="secondary" id="passedProfilesBtn" style="margin:0 0 12px">↩ 넘긴 프로필 다시보기</button>
     <div id="discoverStatus" class="status"></div>
     <div id="profileArea"></div>
+  </section>
+
+  <section id="passedProfiles" class="screen">
+    <div class="section-head"><h2>넘긴 프로필</h2><p class="muted">다시 보고 싶은 사람이 있다면 여기서 호감을 보낼 수 있습니다.</p></div>
+    <button class="secondary" id="backFromPassedBtn" style="margin:0 0 14px">오늘의 인연으로 돌아가기</button>
+    <div id="passedProfilesStatus" class="status"></div>
+    <div id="passedProfileCount" class="small" style="margin-bottom:12px"></div>
+    <div id="passedProfileList" class="match-list"></div>
   </section>
 
   <section id="matches" class="screen">
@@ -400,6 +410,7 @@
   let accessStatus = null;
   let isAdmin = false;
   let adminProfiles = [];
+  let passedProfiles = [];
   let deferredInstallPrompt = null;
   let pendingVerificationEmail = sessionStorage.getItem("everytimematch_pending_email") || "";
   let verificationResendAt = Number(sessionStorage.getItem("everytimematch_resend_at") || 0);
@@ -768,7 +779,7 @@
   async function signOut(){
     clearInterval(chatTimer);
     await db.auth.signOut();
-    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
+    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];passedProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
     go("home");
   }
 
@@ -1215,9 +1226,75 @@
     const {error}=await db.rpc("delete_my_account");
     if(error){alert(humanError(error));return;}
     try{await db.auth.signOut();}catch{}
-    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
+    session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];passedProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
     alert("회원 탈퇴가 완료되었습니다.");
     go("home");
+  }
+
+  async function loadPassedProfiles(){
+    status("passedProfilesStatus","넘긴 프로필을 불러오는 중...");
+    await updateDailyUsage();
+    const {data,error}=await db.rpc("get_passed_profiles");
+    if(error){
+      passedProfiles=[];
+      renderPassedProfiles();
+      status("passedProfilesStatus",humanError(error),"error");
+      return;
+    }
+    passedProfiles=data||[];
+    status("passedProfilesStatus","");
+    renderPassedProfiles();
+  }
+
+  function renderPassedProfiles(){
+    const list=$("passedProfileList");
+    $("passedProfileCount").textContent=passedProfiles.length?"다시 선택할 수 있는 프로필 "+passedProfiles.length+"명":"";
+    if(!passedProfiles.length){
+      list.innerHTML='<div class="empty"><div class="empty-icon">↩</div><h3>아직 넘긴 프로필이 없어요</h3><p class="muted">넘긴 프로필이 생기면 여기에서 다시 확인할 수 있습니다.</p></div>';
+      return;
+    }
+    const limitReached=!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit);
+    list.innerHTML=passedProfiles.map((p,i)=>
+      '<div class="match-item">'+
+        '<div class="match-name">'+esc(p.nickname)+'</div>'+
+        '<div class="passed-meta"><span class="tag">'+esc(p.grade)+'</span>'+
+          (p.mbti?'<span class="tag">'+esc(p.mbti)+'</span>':'')+
+          '<span class="tag">'+esc(p.relationship_intent)+'</span>'+
+          '<span class="tag">'+esc(verificationLabel(p.verification_status))+'</span></div>'+
+        '<div class="passed-bio">'+esc(p.bio)+'</div>'+
+        '<div class="passed-date">넘긴 시간 · '+esc(formatTime(p.passed_at))+'</div>'+
+        '<button class="passed-like" '+(limitReached?'disabled':'')+' onclick="likePassedProfile('+i+')">'+(limitReached?'선택 완료 (5/5)':'♡ 관심 보내기')+'</button>'+
+      '</div>'
+    ).join("");
+  }
+
+  async function likePassedProfile(index){
+    const p=passedProfiles[index];
+    if(!p)return;
+    if(!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
+      status("passedProfilesStatus",discoveryEvent.active?"이번 이벤트의 5명을 모두 선택했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
+      return;
+    }
+    const rpcName=isAdmin?"admin_send_like":"like_passed_candidate";
+    const args=isAdmin?{p_target_user:p.user_id}:{p_target_user:p.user_id};
+    const {data,error}=await db.rpc(rpcName,args);
+    if(error){
+      status("passedProfilesStatus",humanError(error),"error");
+      await updateDailyUsage();
+      renderPassedProfiles();
+      return;
+    }
+    const matched=Boolean(data?.[0]?.matched);
+    passedProfiles.splice(index,1);
+    await updateDailyUsage();
+    if(matched){go("matchSuccess");return;}
+    renderPassedProfiles();
+    status("passedProfilesStatus","호감을 보냈어요.","ok");
+  }
+
+  async function openPassedProfiles(){
+    go("passedProfiles");
+    await loadPassedProfiles();
   }
 
   async function loadAdminProfiles(){
@@ -1289,6 +1366,8 @@
   $("accountLogoutBtn").addEventListener("click",signOut);
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
   $("pwaInstallBtn").addEventListener("click",installPWA);
+  $("passedProfilesBtn").addEventListener("click",openPassedProfiles);
+  $("backFromPassedBtn").addEventListener("click",async()=>{await loadCandidates();go("discover");});
   $("adminConsoleBtn").addEventListener("click",openAdminConsole);
   $("refreshAdminProfilesBtn").addEventListener("click",loadAdminProfiles);
   $("backFromAdminBtn").addEventListener("click",openAccount);
