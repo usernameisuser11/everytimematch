@@ -53,6 +53,8 @@
     .skip{color:#5b6066;background:#f0f0f3}.like{color:#fff;background:var(--accent)}
     .minor-actions{display:flex;justify-content:center;gap:22px;margin-top:17px}.minor-actions button{border:0;background:none;color:#9a9ea4;font-size:12px}
     .like:disabled{opacity:.48;cursor:not-allowed}
+    .feedback-card{margin:0 0 16px;padding:18px;border:1px solid #f1d8de;border-radius:18px;background:linear-gradient(145deg,#fff8fa,#fff);box-shadow:0 8px 24px rgba(230,95,114,.07)}
+    .feedback-card[hidden]{display:none}.feedback-kicker{font-size:11px;font-weight:800;color:var(--accent-dark)}.feedback-title{margin-top:6px;font-size:19px;font-weight:850;letter-spacing:-.4px}.feedback-copy{margin-top:8px;color:#5d6268;font-size:13px;line-height:1.65}.feedback-reward{margin-top:10px;padding:10px 12px;border-radius:11px;background:#fff;color:#ad4053;font-size:12px;font-weight:800}.feedback-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.feedback-stat{padding:11px;border-radius:12px;background:#fafafa;border:1px solid var(--line)}.feedback-stat strong{display:block;font-size:18px}.feedback-stat span{font-size:11px;color:#80848a}
     .milestone-event{margin:0 0 16px;padding:18px;border:1px solid #f2ccd3;border-radius:18px;background:linear-gradient(145deg,#fff7f8,#fff);box-shadow:0 8px 24px rgba(230,95,114,.08)}
     .milestone-event[hidden]{display:none}.event-kicker{font-size:11px;font-weight:800;color:var(--accent-dark);letter-spacing:.2px}.event-title{margin-top:6px;font-size:22px;font-weight:850;letter-spacing:-.5px}
     .event-copy{margin-top:10px;color:#555a61;font-size:14px;line-height:1.75}.event-copy strong{color:#2f3338}.event-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.event-pill{padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #f0dce0;color:#666a70;font-size:11px;font-weight:750}
@@ -218,6 +220,13 @@
 
   <section id="discover" class="screen">
     <div class="section-head"><h2>오늘의 인연</h2><p class="muted">서로 관심을 보냈을 때만 매칭됩니다.</p></div>
+    <div id="feedbackCard" class="feedback-card" hidden>
+      <div class="feedback-kicker">이용자 후기</div>
+      <div class="feedback-title" id="feedbackCardTitle">💌 20초 후기 남기기</div>
+      <div class="feedback-copy" id="feedbackCardCopy">좋았던 점도 아쉬웠던 점도 편하게 알려주세요. 응답은 서비스 개선과 익명 집계에 활용됩니다.</div>
+      <div class="feedback-reward" id="feedbackCardReward">🎁 참여하면 오늘 프로필 +5명 · 관심 +3개</div>
+      <button class="secondary" id="openFeedbackBtn" style="margin-top:12px">후기 남기고 혜택 받기</button>
+    </div>
     <div id="milestoneEvent" class="milestone-event" hidden>
       <div class="event-kicker">50명 기념 · 48시간 한정</div>
       <div class="event-title">🎊 50명 달성</div>
@@ -271,6 +280,21 @@
     </div>
   </section>
 
+  <section id="feedback" class="screen">
+    <div class="section-head"><h2>💌 이용 후기</h2><p class="muted">20초 정도면 끝나요. 좋은 의견도 아쉬운 의견도 편하게 남겨주세요.</p></div>
+    <div class="notice" style="margin-top:0"><strong>참여 혜택</strong><br>후기 내용과 관계없이 계정당 1회, <strong>작성 당일 프로필 5명 + 관심 3개</strong>가 추가됩니다.</div>
+    <div class="field" style="margin-top:22px"><label for="feedbackIntent">1. 어떤 목적으로 이용하셨나요?</label><select id="feedbackIntent"><option value="">선택해주세요</option><option value="dating">소개팅</option><option value="friends">친구</option><option value="both">둘 다</option><option value="unsure">아직 잘 모르겠어요</option></select></div>
+    <div class="field"><label for="feedbackConversation">2. 매칭 후 대화는 어떻게 됐나요?</label><select id="feedbackConversation"><option value="">선택해주세요</option><option value="not_matched">아직 매칭되지 않았어요</option><option value="no_chat">매칭됐지만 대화하지 않았어요</option><option value="brief">잠깐 대화했어요</option><option value="ongoing">계속 대화 중이에요</option></select></div>
+    <div class="field"><label for="feedbackContact">3. 앱 밖 연락처를 교환했나요?</label><select id="feedbackContact"><option value="skip">답변하지 않음</option><option value="yes">예</option><option value="no">아니요</option></select></div>
+    <div class="field"><label for="feedbackMeeting">4. 실제로 만나보셨나요?</label><select id="feedbackMeeting"><option value="skip">답변하지 않음</option><option value="yes">예</option><option value="no">아니요</option></select></div>
+    <div class="field"><label for="feedbackStillInTouch">5. 현재도 연락하고 있나요?</label><select id="feedbackStillInTouch"><option value="skip">답변하지 않음</option><option value="yes">예</option><option value="no">아니요</option><option value="unsure">아직 잘 모르겠어요</option></select></div>
+    <div class="field"><label for="feedbackImprovement">6. 개선됐으면 하는 점 · 선택</label><textarea id="feedbackImprovement" maxlength="600" placeholder="불편했던 점이나 추가됐으면 하는 기능이 있다면 편하게 적어주세요"></textarea></div>
+    <label class="check"><input type="checkbox" id="feedbackConsent"><span>후기 응답을 서비스 개선 및 익명 집계 통계에 활용하는 것에 동의합니다. 개별 응답은 관리자 화면에 표시하지 않습니다.</span></label>
+    <button class="primary" id="submitFeedbackBtn">후기 제출하고 혜택 받기</button>
+    <button class="secondary" id="backFromFeedbackBtn">오늘의 인연으로 돌아가기</button>
+    <div id="feedbackStatus" class="status"></div>
+  </section>
+
   <section id="account" class="screen">
     <div class="section-head"><h2>내 프로필</h2><p class="muted">내 정보와 계정 상태를 관리합니다.</p></div>
     <div class="account-card">
@@ -304,6 +328,11 @@
   <section id="adminConsole" class="screen">
     <div class="section-head"><h2>관리자 전체 프로필</h2><p class="muted">활성 상태의 공개 프로필을 한 화면에서 확인하고 관리자 권한으로 호감을 보낼 수 있습니다.</p></div>
     <div class="admin-warning">관리자 화면에는 다른 사용자에게 원래 공개되는 프로필 정보만 표시합니다. 학교 이메일·비밀번호·개인 연락처는 표시하지 않습니다.</div>
+    <div class="account-card" style="margin-bottom:14px">
+      <strong>📊 이용 후기 집계</strong>
+      <div class="small">개별 응답이나 작성자는 표시하지 않고 전체 통계만 보여줍니다.</div>
+      <div id="adminFeedbackStats" class="feedback-stats"><div class="small">후기 통계를 불러오는 중...</div></div>
+    </div>
     <button class="secondary" id="refreshAdminProfilesBtn" style="margin-top:0">전체 프로필 새로고침</button>
     <button class="secondary" id="backFromAdminBtn">내 프로필로 돌아가기</button>
     <div id="adminProfilesStatus" class="status"></div>
@@ -319,11 +348,12 @@
       <li>가입·인증: 학교 이메일 주소, Supabase 인증 계정 식별자, 이메일 인증 상태</li>
       <li>프로필: 닉네임, 학년, 성별, 찾는 상대, 찾는 관계, 한 줄 소개, 선택 입력한 MBTI</li>
       <li>서비스 이용: 관심/패스 기록, 매칭 기록, 차단 기록, 서비스 내 채팅 메시지</li>
+      <li>선택 후기: 이용 목적, 매칭 후 대화 여부, 연락처 교환·실제 만남·연락 지속 여부, 선택 입력한 개선 의견</li>
       <li>신고: 신고자·피신고자 식별자, 신고 유형, 선택 입력한 설명, 메시지 신고 시 해당 메시지 식별자</li>
       <li>서비스 제공 과정에서 호스팅·인증 제공자가 접속 로그 등 기술 정보를 처리할 수 있습니다.</li>
     </ul>
     <h3>2. 이용 목적</h3>
-    <p>학교 구성원 인증, 계정 관리, 프로필 기반 후보 제공, 상호 관심 매칭, 내부 채팅, 신고·차단 및 안전 운영, 서비스 오류 대응에 사용합니다.</p>
+    <p>학교 구성원 인증, 계정 관리, 프로필 기반 후보 제공, 상호 관심 매칭, 내부 채팅, 신고·차단 및 안전 운영, 서비스 오류 대응에 사용합니다. 선택적으로 제출한 후기는 서비스 개선과 익명 집계 통계 작성에 사용합니다.</p>
     <h3>3. 상대 사용자에게 공개되는 정보</h3>
     <p>프로필에 작성한 닉네임, 학년, MBTI(입력한 경우), 성별/관계 관련 정보와 한 줄 소개가 매칭 기능을 위해 표시될 수 있습니다. <strong>학교 이메일 주소와 비밀번호는 다른 사용자에게 공개하지 않습니다.</strong></p>
     <h3>4. 채팅과 신고</h3>
@@ -421,6 +451,8 @@
   let chatTimer = null;
   let dailyUsage = {views_used:0,views_limit:10,likes_used:0,likes_limit:5};
   let discoveryEvent = {active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
+  let matchFeedbackStatus = {submitted:false,reward_active:false,reward_date:null,bonus_views:0,bonus_likes:0};
+  let matchFeedbackAdminStats = null;
   let reportTarget = null;
   let reportMessageId = null;
   let reportReturnScreen = "discover";
@@ -457,7 +489,10 @@
     if(msg.includes("REPORT_TARGET_NOT_AVAILABLE"))return "현재 신고할 수 없는 사용자입니다. 화면을 새로고침한 뒤 다시 시도해주세요.";
     if(msg.includes("INVALID_REPORT_MESSAGE"))return "신고할 메시지를 확인할 수 없습니다. 대화를 새로고침한 뒤 다시 시도해주세요.";
     if(msg.includes("INVALID_REPORT_CATEGORY"))return "신고 사유를 다시 선택해주세요.";
-    if(msg.includes("EVENT_LIKE_LIMIT_REACHED"))return "이번 50명 이벤트에서 선택할 수 있는 5명을 모두 선택했어요.";
+    if(msg.includes("EVENT_LIKE_LIMIT_REACHED"))return "이번 이벤트에서 선택할 수 있는 횟수를 모두 사용했어요.";
+    if(msg.includes("FEEDBACK_ALREADY_SUBMITTED"))return "이미 후기를 제출하고 혜택을 받으셨어요.";
+    if(msg.includes("INVALID_FEEDBACK"))return "후기 항목을 다시 확인해주세요.";
+    if(msg.includes("FEEDBACK_TOO_LONG"))return "개선 의견은 600자 이내로 작성해주세요.";
     if(msg.includes("DAILY_LIKE_LIMIT_REACHED"))return "오늘 보낼 수 있는 관심을 모두 사용했어요.";
     if(msg.includes("PROFILE_ALREADY_DECIDED"))return "이미 선택한 프로필입니다.";
     if(msg.includes("PROFILE_NOT_VIEWED_TODAY"))return "오늘 확인한 프로필이 아닙니다.";
@@ -496,7 +531,7 @@
   }
 
   function updateNav(id){
-    const show = Boolean(session && myProfile && accessStatus?.access_allowed && !["home","auth","verifyCode","verify","register","chat","matchSuccess","privacy","terms"].includes(id));
+    const show = Boolean(session && myProfile && accessStatus?.access_allowed && !["home","auth","verifyCode","verify","register","chat","matchSuccess","feedback","privacy","terms"].includes(id));
     $("bottomNav").classList.toggle("show",show);
     document.querySelectorAll("#bottomNav button").forEach(btn=>btn.classList.toggle("active",btn.dataset.screen===id));
   }
@@ -727,6 +762,7 @@
       }
       go("register");
     }else{
+      await loadMatchFeedbackStatus();
       await loadCandidates();
       go("discover");
     }
@@ -850,6 +886,71 @@
     go("discover");
   }
 
+  async function loadMatchFeedbackStatus(){
+    if(!session)return;
+    const {data,error}=await db.rpc("get_match_feedback_status");
+    if(error){console.warn("feedback status unavailable",error);return;}
+    const row=data?.[0]||{};
+    matchFeedbackStatus={submitted:Boolean(row.submitted),reward_active:Boolean(row.reward_active),reward_date:row.reward_date||null,bonus_views:Number(row.bonus_views||0),bonus_likes:Number(row.bonus_likes||0)};
+    renderMatchFeedbackCard();
+  }
+
+  function renderMatchFeedbackCard(){
+    const box=$("feedbackCard"); if(!box)return;
+    box.hidden=false;
+    const btn=$("openFeedbackBtn");
+    if(matchFeedbackStatus.submitted){
+      $("feedbackCardTitle").textContent="✅ 후기 참여 완료";
+      $("feedbackCardCopy").textContent=matchFeedbackStatus.reward_active?"고마워요! 오늘 이용 한도에 후기 참여 혜택이 적용되어 있어요.":"후기를 남겨주셔서 감사합니다. 다음 개선에 소중하게 반영할게요.";
+      $("feedbackCardReward").textContent=matchFeedbackStatus.reward_active?"🎁 오늘 프로필 +5명 · 관심 +3개 적용 중":"💗 후기 참여 완료";
+      btn.style.display="none";
+    }else{
+      $("feedbackCardTitle").textContent="💌 20초 후기 남기기";
+      $("feedbackCardCopy").textContent="소개팅/친구 이용 목적부터 매칭 경험까지 편하게 알려주세요. 개별 응답은 관리자 화면에 표시하지 않습니다.";
+      $("feedbackCardReward").textContent="🎁 참여하면 오늘 프로필 +5명 · 관심 +3개";
+      btn.style.display="block";
+    }
+  }
+
+  function openMatchFeedback(){
+    if(matchFeedbackStatus.submitted){alert("이미 후기를 제출해주셨어요. 감사합니다!");return;}
+    $("feedbackIntent").value="";
+    $("feedbackConversation").value="";
+    $("feedbackContact").value="skip";
+    $("feedbackMeeting").value="skip";
+    $("feedbackStillInTouch").value="skip";
+    $("feedbackImprovement").value="";
+    $("feedbackConsent").checked=false;
+    status("feedbackStatus","");
+    go("feedback");
+  }
+
+  async function submitMatchFeedback(){
+    if(!session)return go("auth");
+    const intent=$("feedbackIntent").value;
+    const conversation=$("feedbackConversation").value;
+    if(!intent||!conversation){status("feedbackStatus","1번과 2번 항목을 선택해주세요.","error");return;}
+    if(!$("feedbackConsent").checked){status("feedbackStatus","후기 활용 안내를 확인하고 동의해주세요.","error");return;}
+    const btn=$("submitFeedbackBtn");
+    btn.disabled=true;
+    status("feedbackStatus","후기를 저장하는 중...");
+    const {error}=await db.rpc("submit_match_feedback",{
+      p_usage_intent:intent,
+      p_conversation_status:conversation,
+      p_contact_exchanged:$("feedbackContact").value,
+      p_met_offline:$("feedbackMeeting").value,
+      p_still_in_touch:$("feedbackStillInTouch").value,
+      p_improvement:$("feedbackImprovement").value.trim()||null
+    });
+    btn.disabled=false;
+    if(error){status("feedbackStatus",humanError(error),"error");return;}
+    await loadMatchFeedbackStatus();
+    await updateDailyUsage();
+    await loadCandidates();
+    go("discover");
+    status("discoverStatus","후기 감사합니다! 오늘 프로필 5명과 관심 3개가 추가됐어요 💗","ok");
+  }
+
   function eventRemainingText(){
     if(!discoveryEvent.active||!discoveryEvent.ends_at)return "";
     const ms=new Date(discoveryEvent.ends_at).getTime()-Date.now();
@@ -872,10 +973,11 @@
       return;
     }
     box.hidden=false;
-    const used=Math.min(5,Number(dailyUsage.likes_used||discoveryEvent.likes_used||0));
+    const eventLimit=Math.max(5,Number(discoveryEvent.likes_limit||5));
+    const used=Math.min(eventLimit,Number(dailyUsage.likes_used||discoveryEvent.likes_used||0));
     $("eventRemaining").textContent=eventRemainingText();
-    $("eventLikeCount").textContent=used+" / 5 선택";
-    $("eventChoices").innerHTML=Array.from({length:5},(_,i)=>'<span class="event-choice '+(i<used?"used":"")+'"></span>').join("");
+    $("eventLikeCount").textContent=used+" / "+eventLimit+" 선택";
+    $("eventChoices").innerHTML=Array.from({length:eventLimit},(_,i)=>'<span class="event-choice '+(i<used?"used":"")+'"></span>').join("");
   }
 
   async function updateDiscoveryEventStatus(){
@@ -965,7 +1067,7 @@
           '<div class="privacy-note">🔒 매칭되기 전에는 서로 대화할 수 없습니다.</div>'+
         '</div>'+
       '</div>'+
-      '<div class="actions"><button class="skip" onclick="skipCandidate()">넘기기</button><button class="like" onclick="likeCandidate()" '+(likeLimitReached?'disabled':'')+'>'+(likeLimitReached?'선택 완료 (5/5)':'♡ 관심 있어요')+'</button></div>'+
+      '<div class="actions"><button class="skip" onclick="skipCandidate()">넘기기</button><button class="like" onclick="likeCandidate()" '+(likeLimitReached?'disabled':'')+'>'+(likeLimitReached?'선택 완료 ('+dailyUsage.likes_limit+'/'+dailyUsage.likes_limit+')':'♡ 관심 있어요')+'</button></div>'+
       '<div class="minor-actions"><button onclick="openReport(currentCandidate.user_id,null,\'discover\')">신고</button><button onclick="blockCandidate()">차단</button></div>';
   }
 
@@ -980,7 +1082,7 @@
   async function likeCandidate(){
     const p=currentCandidate;if(!p)return;
     if(!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
-      status("discoverStatus",discoveryEvent.active?"이번 이벤트의 5명을 모두 선택했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
+      status("discoverStatus",discoveryEvent.active?"이번 이벤트에서 선택할 수 있는 횟수를 모두 사용했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
       return;
     }
     if(isAdmin){
@@ -1297,6 +1399,27 @@
     await loadPassedProfiles();
   }
 
+  async function loadMatchFeedbackAdminStats(){
+    if(!isAdmin)return;
+    const box=$("adminFeedbackStats");
+    box.innerHTML='<div class="small">후기 통계를 불러오는 중...</div>';
+    const {data,error}=await db.rpc("get_match_feedback_admin_stats");
+    if(error){box.innerHTML='<div class="small">후기 통계를 불러오지 못했습니다.</div>';console.warn("feedback stats unavailable",error);return;}
+    const s=data?.[0]||{};
+    matchFeedbackAdminStats=s;
+    const total=Number(s.total_responses||0);
+    const pct=n=>total?Math.round(Number(n||0)*100/total):0;
+    box.innerHTML=
+      '<div class="feedback-stat"><strong>'+total+'</strong><span>전체 응답</span></div>'+
+      '<div class="feedback-stat"><strong>'+pct(s.intent_dating)+'%</strong><span>소개팅 목적</span></div>'+
+      '<div class="feedback-stat"><strong>'+pct(s.intent_friends)+'%</strong><span>친구 목적</span></div>'+
+      '<div class="feedback-stat"><strong>'+pct(s.intent_both)+'%</strong><span>둘 다</span></div>'+
+      '<div class="feedback-stat"><strong>'+Number(s.conversation_ongoing||0)+'</strong><span>계속 대화 중</span></div>'+
+      '<div class="feedback-stat"><strong>'+Number(s.contact_exchanged_yes||0)+'</strong><span>연락처 교환</span></div>'+
+      '<div class="feedback-stat"><strong>'+Number(s.met_offline_yes||0)+'</strong><span>실제 만남</span></div>'+
+      '<div class="feedback-stat"><strong>'+Number(s.still_in_touch_yes||0)+'</strong><span>현재도 연락 중</span></div>';
+  }
+
   async function loadAdminProfiles(){
     if(!isAdmin)return;
     status("adminProfilesStatus","전체 프로필을 불러오는 중...");
@@ -1346,7 +1469,7 @@
   async function openAdminConsole(){
     if(!isAdmin)return;
     go("adminConsole");
-    await loadAdminProfiles();
+    await Promise.all([loadAdminProfiles(),loadMatchFeedbackAdminStats()]);
   }
 
   async function openAccount(){
@@ -1367,6 +1490,9 @@
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
   $("pwaInstallBtn").addEventListener("click",installPWA);
   $("passedProfilesBtn").addEventListener("click",openPassedProfiles);
+  $("openFeedbackBtn").addEventListener("click",openMatchFeedback);
+  $("submitFeedbackBtn").addEventListener("click",submitMatchFeedback);
+  $("backFromFeedbackBtn").addEventListener("click",async()=>{await loadMatchFeedbackStatus();await loadCandidates();go("discover");});
   $("backFromPassedBtn").addEventListener("click",async()=>{await loadCandidates();go("discover");});
   $("adminConsoleBtn").addEventListener("click",openAdminConsole);
   $("refreshAdminProfilesBtn").addEventListener("click",loadAdminProfiles);
