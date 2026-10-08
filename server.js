@@ -41,6 +41,20 @@ async function rpc(name,body){
   }finally{clearTimeout(timeout);}
 }
 
+function trustedPushEndpoint(endpoint){
+  try{
+    const url=new URL(endpoint);
+    if(url.protocol!=='https:'||url.username||url.password||(url.port&&url.port!=='443'))return false;
+    const host=url.hostname.toLowerCase();
+    return host==='fcm.googleapis.com' ||
+      host==='updates.push.services.mozilla.com' ||
+      host==='webpush.push.services.mozilla.com' ||
+      host==='android.googleapis.com' ||
+      host==='push.apple.com' || host.endsWith('.push.apple.com') ||
+      host.endsWith('.notify.windows.com');
+  }catch(_){return false;}
+}
+
 async function deliverPending(){
   if(!pushEnabled||busy)return;
   busy=true;
@@ -56,7 +70,10 @@ async function deliverPending(){
         tag:'etmatch-'+kind+'-'+job.reference_id
       });
       try{
-        await webpush.sendNotification({
+        if(!trustedPushEndpoint(job.endpoint)){
+          result='gone';
+          console.warn('Rejected untrusted push endpoint host');
+        }else await webpush.sendNotification({
           endpoint:job.endpoint,
           keys:{p256dh:job.p256dh,auth:job.auth_secret}
         },payload,{TTL:3600,urgency:'normal',timeout:9000});
