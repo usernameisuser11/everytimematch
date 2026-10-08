@@ -4,9 +4,11 @@
   "private": true,
   "description": "Simple campus matching prototype",
   "scripts": {
-    "start": "serve -s . -l tcp://0.0.0.0:$PORT"
+    "start": "node server.js"
   },
   "dependencies": {
-    "serve": "^14.2.4"
+    "serve": "^14.2.4",
+    "web-push": "^3.6.7",
+    "serve-handler": "^6.1.6"
   }
 }
