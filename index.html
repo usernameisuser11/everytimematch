@@ -792,8 +792,12 @@
     }else{
       await loadMatchFeedbackStatus();
       await loadCandidates();
-      go("discover");
+      if(location.hash==="#matches"){
+        await loadMatches();
+        go("matches");
+      }else go("discover");
       startMessageAlerts();
+      refreshPushSubscriptionState();
     }
   }
 
@@ -843,6 +847,7 @@
 
   async function signOut(){
     stopMessageAlerts();
+    await disablePushOnThisDevice(true);
     clearInterval(chatTimer);
     await db.auth.signOut();
     session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];passedProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
@@ -1660,7 +1665,7 @@
           const btn=document.querySelector('#bottomNav button[data-screen="matches"]');
           if(btn)btn.setAttribute("aria-label","매칭 · 새 메시지 있음");
         }
-        if("Notification" in window&&Notification.permission==="granted"&&document.hidden){
+        if(!pushSubscriptionActive&&"Notification" in window&&Notification.permission==="granted"&&document.hidden){
           try{
             const notification=new Notification("Everytime Match · 새 메시지",{
               body:"새 메시지가 도착했어요. 매칭 탭에서 확인하세요.",tag:"everytimematch-incoming"
@@ -1680,6 +1685,7 @@
   }
 
   async function openAccount(){
+    refreshPushSubscriptionState();
     updateMessageAlertButton();
     $("accountEmail").textContent=session?.user?.email||"";
     $("accountVerification").textContent=verificationLabel(accessStatus?.verification_status);
@@ -1698,6 +1704,7 @@
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
   $("pwaInstallBtn").addEventListener("click",installPWA);
   $("enableMessageAlertsBtn").addEventListener("click",enableMessageAlerts);
+  $("disablePushBtn").addEventListener("click",()=>disablePushOnThisDevice(false));
   $("passedProfilesBtn").addEventListener("click",openPassedProfiles);
   $("openFeedbackBtn").addEventListener("click",openMatchFeedback);
   $("submitFeedbackBtn").addEventListener("click",submitMatchFeedback);
@@ -1764,7 +1771,25 @@
       navigator.serviceWorker.register("/sw.js").catch(error=>console.warn("service worker registration failed",error));
     });
   }
-  db.auth.onAuthStateChange((_event,newSession)=>{session=newSession;});
+  navigator.serviceWorker?.addEventListener("message",async event=>{
+    if(event.data?.type==="ETMATCH_OPEN_MATCHES"&&session?.user){
+      await loadMatches();
+      go("matches");
+    }
+  });
+  db.auth.onAuthStateChange((event,newSession)=>{
+    session=newSession;
+    if(event==="SIGNED_OUT"){
+      stopMessageAlerts();
+      pushSubscriptionActive=false;
+      if("serviceWorker" in navigator){
+        navigator.serviceWorker.ready.then(async registration=>{
+          const subscription=await registration.pushManager.getSubscription();
+          if(subscription)await subscription.unsubscribe();
+        }).catch(error=>console.warn("Push cleanup on sign-out failed:",error));
+      }
+    }
+  });
   setInterval(()=>{if(discoveryEvent.active)renderDiscoveryEvent();},30000);
   init();
 </script>
