@@ -305,6 +305,9 @@
 
     <button class="primary" id="editProfileBtn">프로필 수정</button>
     <button class="secondary" id="pwaInstallBtn" style="display:none">앱으로 설치하기</button>
+    <button class="secondary" id="enableMessageAlertsBtn" type="button">🔔 메시지 알림 켜기</button>
+    <div class="small" style="margin-top:7px">앱을 실행 중일 때 새 메시지를 확인할 수 있어요. 앱을 완전히 종료하면 알림을 보낼 수 없어요.</div>
+    <div id="messageAlertsStatus" class="status"></div>
     <div id="pwaInstallNote" class="small" style="display:none;margin-top:8px"></div>
     <button class="secondary" id="adminConsoleBtn" style="display:none">관리자 전체 프로필 보기</button>
 
@@ -451,6 +454,10 @@
   let chatTimer = null;
   let sendingMessage = false;
   let candidateActionBusy = false;
+  let messageAlertTimer = null;
+  let messageAlertChecking = false;
+  let incomingMessageCursor = null;
+  let incomingMessageUser = null;
   let dailyUsage = {views_used:0,views_limit:10,likes_used:0,likes_limit:5};
   let discoveryEvent = {active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
   let matchFeedbackStatus = {submitted:false,reward_active:false,reward_date:null,bonus_views:0,bonus_likes:0};
@@ -783,6 +790,7 @@
       await loadMatchFeedbackStatus();
       await loadCandidates();
       go("discover");
+      startMessageAlerts();
     }
   }
 
@@ -831,6 +839,7 @@
   }
 
   async function signOut(){
+    stopMessageAlerts();
     clearInterval(chatTimer);
     await db.auth.signOut();
     session=null;myProfile=null;accessStatus=null;isAdmin=false;adminProfiles=[];passedProfiles=[];currentCandidate=null;myMatches=[];activeMatch=null;
@@ -1519,7 +1528,77 @@
     await Promise.all([loadAdminProfiles(),loadMatchFeedbackAdminStats()]);
   }
 
+  function stopMessageAlerts(){
+    clearInterval(messageAlertTimer);
+    messageAlertTimer=null;
+    incomingMessageCursor=null;
+    incomingMessageUser=null;
+  }
+  function updateMessageAlertButton(){
+    const btn=$("enableMessageAlertsBtn");
+    if(!("Notification" in window)){
+      btn.textContent="🔕 시스템 알림 미지원";
+      btn.disabled=true;
+    }else if(Notification.permission==="granted"){
+      btn.textContent="🔔 메시지 알림 사용 중";
+    }else if(Notification.permission==="denied"){
+      btn.textContent="🔕 브라우저 설정에서 알림 허용 필요";
+    }else{
+      btn.textContent="🔔 메시지 알림 켜기";
+    }
+  }
+  async function enableMessageAlerts(){
+    if(!("Notification" in window)){
+      status("messageAlertsStatus","이 브라우저는 시스템 알림을 지원하지 않아요.","error");
+      return;
+    }
+    try{
+      const permission=await Notification.requestPermission();
+      updateMessageAlertButton();
+      status("messageAlertsStatus",permission==="granted"?"알림을 켰어요. 앱을 실행 중일 때 새 메시지를 알려드릴게요.":"브라우저 설정에서 알림을 허용하면 사용할 수 있어요.",permission==="granted"?"ok":"error");
+    }catch(e){status("messageAlertsStatus",humanError(e),"error");}
+  }
+  async function pollIncomingMessages(){
+    if(!session?.user?.id||!myProfile||!accessStatus?.access_allowed||messageAlertChecking)return;
+    messageAlertChecking=true;
+    const uid=session.user.id;
+    try{
+      if(incomingMessageUser!==uid){incomingMessageUser=uid;incomingMessageCursor=null;}
+      const {data,error}=await db.from("messages")
+        .select("created_at")
+        .neq("sender_id",uid)
+        .order("created_at",{ascending:false}).limit(1);
+      if(error)throw error;
+      if(uid!==session?.user?.id)return;
+      const newest=data?.[0]?.created_at;
+      if(!newest)return;
+      if(incomingMessageCursor&&newest>incomingMessageCursor){
+        if(document.querySelector(".screen.active")?.id!=="chat"){
+          $("headerBadge").textContent="💬 새 메시지";
+          const btn=document.querySelector('#bottomNav button[data-screen="matches"]');
+          if(btn)btn.setAttribute("aria-label","매칭 · 새 메시지 있음");
+        }
+        if("Notification" in window&&Notification.permission==="granted"&&document.hidden){
+          try{
+            const notification=new Notification("Everytime Match · 새 메시지",{
+              body:"새 메시지가 도착했어요. 매칭 탭에서 확인하세요.",tag:"everytimematch-incoming"
+            });
+            notification.onclick=()=>{window.focus();notification.close();go("matches");loadMatches();};
+          }catch(e){console.warn("System notification unavailable",e);}
+        }
+      }
+      if(!incomingMessageCursor||newest>incomingMessageCursor)incomingMessageCursor=newest;
+    }catch(e){console.warn("Message alert poll failed",e);}
+    finally{messageAlertChecking=false;}
+  }
+  function startMessageAlerts(){
+    clearInterval(messageAlertTimer);
+    pollIncomingMessages();
+    messageAlertTimer=setInterval(pollIncomingMessages,30000);
+  }
+
   async function openAccount(){
+    updateMessageAlertButton();
     $("accountEmail").textContent=session?.user?.email||"";
     $("accountVerification").textContent=verificationLabel(accessStatus?.verification_status);
     updatePWAInstallUI();
@@ -1536,6 +1615,7 @@
   $("accountLogoutBtn").addEventListener("click",signOut);
   $("editProfileBtn").addEventListener("click",async()=>{await loadProfileForm();go("register");});
   $("pwaInstallBtn").addEventListener("click",installPWA);
+  $("enableMessageAlertsBtn").addEventListener("click",enableMessageAlerts);
   $("passedProfilesBtn").addEventListener("click",openPassedProfiles);
   $("openFeedbackBtn").addEventListener("click",openMatchFeedback);
   $("submitFeedbackBtn").addEventListener("click",submitMatchFeedback);
