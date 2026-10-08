@@ -397,10 +397,7 @@ begin
 
           or
 
-          (
-            not v_event_active
-            and d.activity_date = v_today
-          )
+          (d.activity_date >= v_today - 3)
 
         )
 
