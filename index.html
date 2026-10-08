@@ -449,6 +449,8 @@
   let myMatches = [];
   let activeMatch = null;
   let chatTimer = null;
+  let sendingMessage = false;
+  let candidateActionBusy = false;
   let dailyUsage = {views_used:0,views_limit:10,likes_used:0,likes_limit:5};
   let discoveryEvent = {active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
   let matchFeedbackStatus = {submitted:false,reward_active:false,reward_date:null,bonus_views:0,bonus_likes:0};
@@ -521,14 +523,30 @@
     return isAdmin;
   }
 
-  function go(id){
+  function go(id, fromHistory=false){
+    if(!$(id))return;
+    const previous=document.querySelector(".screen.active")?.id;
     document.querySelectorAll(".screen").forEach(el=>el.classList.remove("active"));
     $(id).classList.add("active");
     clearInterval(chatTimer);
-    chatTimer = null;
+    chatTimer=null;
+    if(id==="chat"&&activeMatch)chatTimer=setInterval(loadMessages,5000);
     updateNav(id);
-    window.scrollTo({top:0,behavior:"smooth"});
+    if(!fromHistory){
+      const state={everytimeMatchScreen:id};
+      const url=location.pathname+location.search+"#"+id;
+      if(!history.state?.everytimeMatchScreen)history.replaceState(state,"",url);
+      else if(previous!==id)history.pushState(state,"",url);
+    }
+    window.scrollTo(0,0);
   }
+  window.addEventListener("popstate",event=>{
+    let target=event.state?.everytimeMatchScreen||"home";
+    if(!session&&!["home","auth","verifyCode","privacy","terms"].includes(target))target="home";
+    if(target==="chat"&&!activeMatch)target="matches";
+    go(target,true);
+    if(target==="chat"&&activeMatch)loadMessages();
+  });
 
   function updateNav(id){
     const show = Boolean(session && myProfile && accessStatus?.access_allowed && !["home","auth","verifyCode","verify","register","chat","matchSuccess","feedback","privacy","terms"].includes(id));
@@ -1072,15 +1090,20 @@
   }
 
   async function skipCandidate(){
-    const p=currentCandidate;if(!p)return;
-    const {error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"pass"});
-    if(error){status("discoverStatus",humanError(error),"error");return;}
-    currentCandidate=null;
-    await loadCandidates();
+    const p=currentCandidate;if(!p||candidateActionBusy)return;
+    candidateActionBusy=true;
+    try{
+      const {error}=await db.rpc("record_candidate_decision",{target_user:p.user_id,p_decision:"pass"});
+      if(error){status("discoverStatus",humanError(error),"error");return;}
+      currentCandidate=null;
+      await loadCandidates();
+    }finally{candidateActionBusy=false;}
   }
 
   async function likeCandidate(){
-    const p=currentCandidate;if(!p)return;
+    const p=currentCandidate;if(!p||candidateActionBusy)return;
+    candidateActionBusy=true;
+    try{
     if(!isAdmin && Number(dailyUsage.likes_used)>=Number(dailyUsage.likes_limit)){
       status("discoverStatus",discoveryEvent.active?"이번 이벤트에서 선택할 수 있는 횟수를 모두 사용했어요.":"오늘 보낼 수 있는 관심을 모두 사용했어요.","error");
       return;
@@ -1112,6 +1135,7 @@
       await loadCandidates();
       status("discoverStatus","관심을 보냈어요. 상대도 관심을 보내면 매칭됩니다.","ok");
     }
+    }finally{candidateActionBusy=false;}
   }
 
   async function blockCandidate(){
@@ -1150,6 +1174,11 @@
           '<div class="match-name">'+esc(m.nickname)+' <span class="tag">'+esc(m.grade)+'</span> '+(m.mbti?'<span class="tag">'+esc(m.mbti)+'</span>':'')+' <span class="tag">'+esc(verificationLabel(m.verification_status))+'</span></div>'+
           '<div class="match-preview">'+esc(m.last_message||"아직 대화를 시작하지 않았어요")+'</div>'+
         '</div></div>'+
+        '<details class="help-box" style="margin-top:12px"><summary>상대 프로필 다시 보기</summary>'+
+        '<div class="help-content"><div class="passed-meta"><span class="tag">'+esc(m.grade)+'</span>'+
+        (m.mbti?'<span class="tag">'+esc(m.mbti)+'</span>':'')+
+        (m.relationship_intent?'<span class="tag">'+esc(m.relationship_intent)+'</span>':'')+
+        '</div><div class="passed-bio">'+esc(m.bio||"소개글이 없습니다.")+'</div></div></details>'+
         '<button onclick="openChat('+i+')">대화 시작하기</button>'+
       '</div>'
     ).join("");
@@ -1163,7 +1192,6 @@
     $("messageInput").value="";
     go("chat");
     await loadMessages();
-    chatTimer=setInterval(loadMessages,5000);
   }
 
   async function loadMessages(){
@@ -1190,15 +1218,34 @@
   }
 
   async function sendMessage(){
-    if(!activeMatch)return;
+    if(!activeMatch||!session?.user||sendingMessage)return;
     const content=$("messageInput").value.trim();
     if(!content)return;
+    const sendingMatchId=activeMatch.match_id;
+    sendingMessage=true;
     $("sendMessageBtn").disabled=true;
-    const {error}=await db.from("messages").insert({match_id:activeMatch.match_id,sender_id:session.user.id,content});
-    $("sendMessageBtn").disabled=false;
-    if(error){status("chatStatus",humanError(error),"error");return;}
-    $("messageInput").value="";
-    await loadMessages();
+    $("sendMessageBtn").textContent="전송 중";
+    status("chatStatus","");
+    try{
+      const {error}=await db.from("messages").insert({
+        match_id:sendingMatchId,sender_id:session.user.id,content
+      });
+      if(error)throw error;
+      if(activeMatch?.match_id===sendingMatchId){
+        if($("messageInput").value.trim()===content)$("messageInput").value="";
+        await loadMessages();
+      }
+    }catch(error){
+      console.error("message send failed",error);
+      const detail=humanError(error);
+      const permissions=/row.level.security|permission denied|403|42501/i.test(String(error?.message||""));
+      const guidance=permissions?"매칭이 종료되었거나 권한이 변경됐을 수 있어요. 매칭 목록을 확인해주세요.":"입력 내용은 유지됐어요. 인터넷 연결을 확인하고 다시 전송해주세요.";
+      status("chatStatus","메시지를 전송하지 못했어요. "+guidance+" ("+detail+")","error");
+    }finally{
+      sendingMessage=false;
+      $("sendMessageBtn").disabled=false;
+      $("sendMessageBtn").textContent="전송";
+    }
   }
 
   async function endCurrentMatch(block){
