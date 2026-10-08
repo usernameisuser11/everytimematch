@@ -1,4 +1,4 @@
-const CACHE_NAME = "everytime-match-pwa-v1";
+const CACHE_NAME = "everytime-match-pwa-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -32,6 +32,7 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -57,4 +58,35 @@ self.addEventListener("fetch", event => {
       })
       .catch(() => caches.match(request))
   );
+});
+
+self.addEventListener("push", event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) {}
+  const title = typeof data.title === "string" ? data.title : "Everytime Match";
+  const destination = typeof data.url === "string" && data.url.startsWith("/#")
+    ? data.url : "/#matches";
+  event.waitUntil(self.registration.showNotification(title, {
+    body: typeof data.body === "string" ? data.body : "새 소식이 도착했어요.",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: typeof data.tag === "string" ? data.tag : "everytime-match",
+    data: { url: destination }
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const destination = event.notification.data?.url || "/#matches";
+  event.waitUntil((async () => {
+    const windows = await clients.matchAll({type:"window",includeUncontrolled:true});
+    for (const client of windows) {
+      if (new URL(client.url).origin === self.location.origin) {
+        await client.focus();
+        client.postMessage({type:"ETMATCH_OPEN_MATCHES"});
+        return;
+      }
+    }
+    await clients.openWindow(destination);
+  })());
 });
