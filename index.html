@@ -305,8 +305,9 @@
 
     <button class="primary" id="editProfileBtn">프로필 수정</button>
     <button class="secondary" id="pwaInstallBtn" style="display:none">앱으로 설치하기</button>
-    <button class="secondary" id="enableMessageAlertsBtn" type="button">🔔 메시지 알림 켜기</button>
-    <div class="small" style="margin-top:7px">앱을 실행 중일 때 새 메시지를 확인할 수 있어요. 앱을 완전히 종료하면 알림을 보낼 수 없어요.</div>
+    <button class="secondary" id="enableMessageAlertsBtn" type="button">🔔 메시지·매칭 푸시 알림 켜기</button>
+    <button class="secondary" id="disablePushBtn" type="button" style="display:none">이 기기에서 푸시 알림 끄기</button>
+    <div class="small" style="margin-top:7px">앱을 닫아도 메시지와 매칭 알림을 받을 수 있어요. iPhone은 홈 화면에 설치한 앱에서 켜주세요.</div>
     <div id="messageAlertsStatus" class="status"></div>
     <div id="pwaInstallNote" class="small" style="display:none;margin-top:8px"></div>
     <button class="secondary" id="adminConsoleBtn" style="display:none">관리자 전체 프로필 보기</button>
@@ -458,6 +459,8 @@
   let messageAlertChecking = false;
   let incomingMessageCursor = null;
   let incomingMessageUser = null;
+  let pushSubscriptionActive = false;
+  let pushSubscriptionBusy = false;
   let dailyUsage = {views_used:0,views_limit:10,likes_used:0,likes_limit:5};
   let discoveryEvent = {active:false,starts_at:null,ends_at:null,likes_used:0,likes_limit:5};
   let matchFeedbackStatus = {submitted:false,reward_active:false,reward_date:null,bonus_views:0,bonus_likes:0};
@@ -1534,29 +1537,108 @@
     incomingMessageCursor=null;
     incomingMessageUser=null;
   }
+  function decodeBase64UrlKey(value){
+    const base64=value.replace(/-/g,"+").replace(/_/g,"/");
+    const padded=base64+"=".repeat((4-base64.length%4)%4);
+    return Uint8Array.from(atob(padded),c=>c.charCodeAt(0));
+  }
+  async function refreshPushSubscriptionState(){
+    try{
+      if(!("serviceWorker" in navigator)||!("PushManager" in window)){
+        pushSubscriptionActive=false;
+      }else{
+        const registration=await navigator.serviceWorker.ready;
+        pushSubscriptionActive=Boolean(await registration.pushManager.getSubscription());
+      }
+    }catch(error){pushSubscriptionActive=false;}
+    updateMessageAlertButton();
+  }
+  async function disablePushOnThisDevice(silent=false){
+    if(pushSubscriptionBusy||!("serviceWorker" in navigator))return;
+    pushSubscriptionBusy=true;
+    try{
+      const registration=await navigator.serviceWorker.ready;
+      const subscription=await registration.pushManager.getSubscription();
+      if(subscription){
+        if(session?.user?.id){
+          const {error}=await db.from("push_subscriptions")
+            .delete().eq("user_id",session.user.id).eq("endpoint",subscription.endpoint);
+          if(error)console.warn("Push registration cleanup failed:",error.message);
+        }
+        await subscription.unsubscribe();
+      }
+      pushSubscriptionActive=false;
+      if(!silent)status("messageAlertsStatus","이 기기의 푸시 알림을 껐어요.","ok");
+    }catch(error){
+      if(!silent)status("messageAlertsStatus",humanError(error),"error");
+    }finally{pushSubscriptionBusy=false;updateMessageAlertButton();}
+  }
   function updateMessageAlertButton(){
     const btn=$("enableMessageAlertsBtn");
-    if(!("Notification" in window)){
-      btn.textContent="🔕 시스템 알림 미지원";
-      btn.disabled=true;
-    }else if(Notification.permission==="granted"){
-      btn.textContent="🔔 메시지 알림 사용 중";
-    }else if(Notification.permission==="denied"){
-      btn.textContent="🔕 브라우저 설정에서 알림 허용 필요";
-    }else{
-      btn.textContent="🔔 메시지 알림 켜기";
-    }
+    const supported=("Notification" in window)&&("serviceWorker" in navigator)&&("PushManager" in window);
+    btn.disabled=pushSubscriptionBusy||!supported||(supported&&Notification.permission==="denied");
+    btn.textContent=!supported?"🔕 이 기기는 푸시 알림을 지원하지 않아요":
+      pushSubscriptionActive?"🔔 푸시 알림 사용 중":
+      Notification.permission==="denied"?"🔕 알림 권한을 다시 허용해주세요":
+      "🔔 메시지·매칭 푸시 알림 켜기";
+    $("disablePushBtn").style.display=pushSubscriptionActive?"block":"none";
   }
   async function enableMessageAlerts(){
-    if(!("Notification" in window)){
-      status("messageAlertsStatus","이 브라우저는 시스템 알림을 지원하지 않아요.","error");
+    if(pushSubscriptionBusy)return;
+    if(isIOSDevice()&&!isStandalonePWA()){
+      status("messageAlertsStatus","iPhone은 Safari에서 공유 → 홈 화면에 추가를 선택하고 설치한 앱을 실행한 뒤 알림을 켜주세요.","error");
       return;
     }
-    try{
-      const permission=await Notification.requestPermission();
+    if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){
+      status("messageAlertsStatus","이 기기는 웹 푸시 알림을 지원하지 않아요.","error");
+      return;
+    }
+    let permission;
+    try{permission=await Notification.requestPermission();}
+    catch(error){status("messageAlertsStatus",humanError(error),"error");return;}
+    if(permission!=="granted"){
       updateMessageAlertButton();
-      status("messageAlertsStatus",permission==="granted"?"알림을 켰어요. 앱을 실행 중일 때 새 메시지를 알려드릴게요.":"브라우저 설정에서 알림을 허용하면 사용할 수 있어요.",permission==="granted"?"ok":"error");
-    }catch(e){status("messageAlertsStatus",humanError(e),"error");}
+      status("messageAlertsStatus","기기 설정에서 Everytime Match의 알림을 허용해주세요.","error");
+      return;
+    }
+    pushSubscriptionBusy=true;
+    updateMessageAlertButton();
+    try{
+      if(!session?.user?.id)throw Error("로그인이 필요해요.");
+      const response=await fetch("/api/push/public-key",{cache:"no-store"});
+      if(!response.ok)throw Error("푸시 서버에 연결할 수 없어요.");
+      const config=await response.json();
+      if(!config.enabled||!config.publicKey)throw Error("푸시 서버가 아직 준비되지 않았어요.");
+      const key=decodeBase64UrlKey(config.publicKey);
+      const registration=await navigator.serviceWorker.ready;
+      let subscription=await registration.pushManager.getSubscription();
+      if(subscription?.options?.applicationServerKey){
+        const previous=new Uint8Array(subscription.options.applicationServerKey);
+        if(previous.length!==key.length||previous.some((value,i)=>value!==key[i])){
+          await subscription.unsubscribe();
+          subscription=null;
+        }
+      }
+      if(!subscription)subscription=await registration.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:key
+      });
+      const result=subscription.toJSON();
+      if(!result.keys?.p256dh||!result.keys?.auth)throw Error("기기 암호화 키를 확인하지 못했어요.");
+      const {error}=await db.from("push_subscriptions").upsert({
+        user_id:session.user.id,
+        endpoint:subscription.endpoint,
+        p256dh:result.keys.p256dh,
+        auth_key:result.keys.auth,
+        updated_at:new Date().toISOString()
+      },{onConflict:"endpoint"});
+      if(error)throw error;
+      pushSubscriptionActive=true;
+      status("messageAlertsStatus","설정 완료! 앱을 닫아도 이 기기로 메시지와 매칭 알림을 받을 수 있어요.","ok");
+    }catch(error){
+      console.error("Push subscription registration failed:",error);
+      status("messageAlertsStatus","푸시 알림 등록 실패: "+humanError(error),"error");
+    }finally{pushSubscriptionBusy=false;updateMessageAlertButton();}
   }
   async function pollIncomingMessages(){
     if(!session?.user?.id||!myProfile||!accessStatus?.access_allowed||messageAlertChecking)return;
