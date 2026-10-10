@@ -95,7 +95,18 @@ async function deliverPending(){
 }
 
 const server=http.createServer(async(req,res)=>{
-  const pathname=new URL(req.url||'/', 'https://everytimematch.local').pathname;
+  // Reject invalid request targets instead of allowing a malformed URL to crash Node.
+  let pathname;
+  try{
+    const target=req.url||'/';
+    if(!target.startsWith('/')||target.startsWith('//'))throw new Error('Invalid request target');
+    pathname=new URL(target,'https://everytimematch.local').pathname;
+  }catch(_){
+    res.writeHead(400,{'Content-Type':'text/plain; charset=utf-8'});
+    res.end('Bad request');
+    return;
+  }
+
   if(pathname==='/api/push/public-key'){
     res.setHeader('Content-Type','application/json; charset=utf-8');
     res.setHeader('Cache-Control','no-store');
@@ -104,26 +115,44 @@ const server=http.createServer(async(req,res)=>{
   }
   if(pathname==='/api/health'){
     res.setHeader('Content-Type','application/json; charset=utf-8');
+    res.setHeader('Cache-Control','no-store');
     res.end(JSON.stringify({ok:true,pushEnabled}));
     return;
   }
   if(!['GET','HEAD'].includes(req.method)){
-    res.writeHead(405,{'Content-Type':'text/plain'});res.end('Method not allowed');return;
+    res.writeHead(405,{'Content-Type':'text/plain; charset=utf-8'});
+    res.end('Method not allowed');
+    return;
   }
-  const publicFile=pathname==='/'||pathname==='/index.html'||pathname==='/sw.js'||
-    pathname==='/manifest.webmanifest'||/^\/icons\/[a-zA-Z0-9_-]+\.png$/.test(pathname);
-  if(!publicFile){
-    if((req.headers.accept||'').includes('text/html')){
-      req.url='/index.html';
-    }else{
-      res.writeHead(404,{'Content-Type':'text/plain'});res.end('Not found');return;
-    }
+
+  // This project is a single-page app. Explicitly serve its entrypoint rather
+  // than letting the static server treat '/' (or '/app/') as a directory.
+  const isAsset=pathname==='/sw.js'||pathname==='/manifest.webmanifest'||
+    /^\/icons\/[a-zA-Z0-9_-]+\.png$/.test(pathname);
+  const acceptsHtml=(req.headers.accept||'').includes('text/html');
+  const isAppPage=pathname==='/'||pathname==='/index.html'||
+    pathname==='/app'||pathname==='/app/'||
+    (acceptsHtml&&!path.posix.extname(pathname)&&!pathname.startsWith('/api/'));
+
+  // Never serve repository documents, source code, environment files, or folders.
+  if(!isAppPage&&!isAsset){
+    res.writeHead(404,{'Content-Type':'text/plain; charset=utf-8'});
+    res.end('Not found');
+    return;
   }
+  req.url=isAppPage?'/index.html':pathname;
+  if(isAppPage)res.setHeader('Cache-Control','no-store');
+  if(pathname==='/sw.js')res.setHeader('Cache-Control','no-cache');
+
   try{
-    await serveHandler(req,res,{public:__dirname,cleanUrls:false});
+    await serveHandler(req,res,{
+      public:__dirname,
+      directoryListing:false,
+      cleanUrls:false
+    });
   }catch(error){
     console.error('HTTP request failed:',error.message);
-    if(!res.headersSent)res.writeHead(500,{'Content-Type':'text/plain'});
+    if(!res.headersSent)res.writeHead(500,{'Content-Type':'text/plain; charset=utf-8'});
     res.end('Internal server error');
   }
 });
