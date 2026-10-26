@@ -1,12 +1,249 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#e65f72"><title>익명의 편지함 | EveryTimeMatch</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>*{box-sizing:border-box}body{margin:0;background:#f9f3f6;color:#29212a;font-family:system-ui,-apple-system,sans-serif}.app{max-width:480px;min-height:100vh;margin:auto;background:#fff;padding:22px 20px 65px}header{display:flex;align-items:center;justify-content:space-between}a{color:#b34d74;text-decoration:none}h1{font-size:31px;margin:35px 0 8px}h2{font-size:20px}.sub{color:#8b7a85;line-height:1.7}.hero{background:linear-gradient(135deg,#fff0f4,#f7edff);border-radius:24px;padding:25px;margin:24px 0;text-align:center}.hero .emoji{font-size:62px}.tabs{display:flex;gap:6px;margin:20px 0}.tabs button{flex:1;padding:12px 4px;border:0;border-radius:12px;background:#f6f2f4;color:#786d75;font-weight:700}.tabs button.active{background:#d95f86;color:#fff}.panel{border:1px solid #f0dfe5;border-radius:20px;padding:18px;margin:15px 0;background:#fff}.letter{white-space:pre-wrap;line-height:1.85;padding:19px;background:#fff7fa;border-radius:14px;margin:14px 0}.btn{border:0;border-radius:13px;padding:13px 16px;background:#d95f86;color:#fff;font-weight:700;cursor:pointer}.btn.alt{background:#f8edf2;color:#a34466}.btn:disabled{opacity:.45;cursor:default}.btn.full{width:100%;margin-top:12px}textarea{width:100%;min-height:130px;padding:14px;border-radius:13px;border:1px solid #e5ccd7;font:inherit;resize:vertical}small{color:#95848d}.hidden{display:none!important}.msg{padding:13px;border-radius:12px;background:#f8f2f5;line-height:1.5;font-size:13px;margin:14px 0}.error{color:#a62245;background:#fff0f3}.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.reply{padding:14px;border-radius:13px;border:1px solid #f1e2e9;margin-top:12px;white-space:pre-wrap;line-height:1.7}</style></head><body><main class="app"><header><b>EveryTimeMatch 💌</b><a href="/">서비스로 돌아가기</a></header><h1>익명의 편지함</h1><p class="sub">프로필보다 먼저, 마음이 도착합니다.<br>시험이 끝난 지금 누군가의 이야기를 읽어보세요.</p><div class="hero"><div class="emoji">💌</div><b>AFTER EXAM</b><p class="sub">편지를 읽고 답장하면 새로운 인연이 시작될지도 몰라요.</p></div><div id="notice" class="msg">로그인 상태를 확인하는 중이에요.</div><div id="content" class="hidden"><div class="tabs"><button data-tab="write" class="active">편지 쓰기</button><button data-tab="browse">편지 읽기</button><button data-tab="inbox">받은 답장</button></div><section id="write"><h2>익명 편지 작성</h2><p class="sub">한 사람당 편지 한 통을 보낼 수 있어요. 개인 연락처는 적지 말아 주세요.</p><textarea id="body" maxlength="200" placeholder="시험 끝나면 같이 하고 싶은 일이나 요즘 관심 있는 이야기를 남겨보세요."></textarea><div class="row"><small id="count">0 / 200자 · 최소 30자</small><small>익명으로 공개</small></div><button class="btn full" id="submit">편지 보내기</button></section><section id="browse" class="hidden"><h2>누군가의 편지</h2><div id="letters"></div><button class="btn alt full" id="reload">새로고침</button></section><section id="inbox" class="hidden"><h2>내 편지에 도착한 답장</h2><div id="replies"></div><button class="btn alt full" id="refreshReplies">답장 새로고침</button></section></div><p class="sub" style="font-size:12px;margin-top:30px">신고·차단 기능이 준비되기 전에는 실제 공개 이벤트로 운영하지 마세요.</p></main><script>
-const db=window.supabase.createClient('https://mrbuxqaeqvuevplpssgi.supabase.co','sb_publishable_x8mtMxk3tQnIB4oI5gOc1A_aH2pL0OE');const $=id=>document.getElementById(id);let busy=false;
-function msg(t,err=false){$('notice').textContent=t;$('notice').className='msg'+(err?' error':'')}
-function el(tag,txt,cls){let n=document.createElement(tag);if(txt!==undefined)n.textContent=txt;if(cls)n.className=cls;return n}
-async function rpc(name,args){let {data,error}=await db.rpc(name,args);if(error)throw error;return data}
-function tab(t){for(const x of ['write','browse','inbox'])$(x).classList.toggle('hidden',x!==t);document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));if(t==='browse')browse();if(t==='inbox')inbox()}
-async function browse(){const box=$('letters');box.replaceChildren(el('p','편지를 불러오는 중...','sub'));try{const list=await rpc('event_browse_letters');box.replaceChildren();if(!list.length){box.append(el('p','아직 읽을 수 있는 편지가 없어요.','sub'));return}for(const item of list){const card=el('article',undefined,'panel');card.append(el('small','FROM. 익명의 학생'),el('div',item.letter_body,'letter'));const area=el('div');const input=el('textarea');input.maxLength=200;input.placeholder='상대방에게 보낼 답장을 적어 주세요';input.classList.add('hidden');const btn=el('button','답장하기','btn');btn.onclick=async()=>{if(input.classList.contains('hidden')){input.classList.remove('hidden');btn.textContent='답장 전송';return}if(!input.value.trim())return alert('답장을 작성해 주세요');if(busy)return;busy=true;btn.disabled=true;try{await rpc('event_reply_letter',{p_letter:item.letter_id,p_body:input.value.trim()});msg('답장을 보냈어요!');await browse()}catch(e){msg(e.message,true)}finally{busy=false;btn.disabled=false}};area.append(input,btn);card.append(area);box.append(card)}}catch(e){box.replaceChildren(el('p','편지를 불러오지 못했어요: '+e.message,'msg error'))}}
-async function inbox(){const box=$('replies');box.replaceChildren(el('p','답장을 불러오는 중...','sub'));try{const list=await rpc('event_my_replies');box.replaceChildren();if(!list.length){box.append(el('p','아직 받은 답장이 없어요.','sub'));return}for(const item of list){const card=el('article',undefined,'panel');card.append(el('small','익명의 답장'),el('div',item.reply_body,'reply'));const btn=el('button',item.accepted?'연결 완료':'인연 이어가기','btn full');btn.disabled=item.accepted;btn.onclick=async()=>{if(!confirm('이 답장을 보낸 사람과 매칭할까요?'))return;btn.disabled=true;try{await rpc('event_accept_reply',{p_reply:item.reply_id});msg('매칭됐어요! 기존 매칭 목록에서 확인해 주세요.');await inbox()}catch(e){msg(e.message,true);btn.disabled=false}};card.append(btn);box.append(card)}}catch(e){box.replaceChildren(el('p','답장을 불러오지 못했어요: '+e.message,'msg error'))}}
-$('body').addEventListener('input',()=>{$('count').textContent=$('body').value.trim().length+' / 200자 · 최소 30자'});$('submit').onclick=async()=>{const v=$('body').value.trim();if(v.length<30||v.length>200)return msg('편지는 30~200자로 작성해 주세요.',true);if(!confirm('편지는 한 번만 보낼 수 있어요. 작성할까요?'))return;$('submit').disabled=true;try{await rpc('event_write_letter',{p_body:v});msg('편지가 등록됐어요! 받은 답장은 편지함에서 확인할 수 있어요.');$('body').disabled=true}catch(e){msg(e.message,true);$('submit').disabled=false}};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('reload').onclick=browse;$('refreshReplies').onclick=inbox;
-(async()=>{try{const {data:{user},error}=await db.auth.getUser();if(error||!user){msg('기존 EveryTimeMatch에 로그인한 후 다시 열어 주세요.');return}const {data:profile,error:pe}=await db.from('profiles').select('user_id').eq('user_id',user.id).maybeSingle();if(pe||!profile){msg('먼저 기존 서비스에서 프로필을 완성해 주세요.');return}$('content').classList.remove('hidden');msg('로그인 확인 완료 · 익명 편지 이벤트 테스트 화면')}catch(e){msg(e.message,true)}})();
-</script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e65f72">
+<meta name="description" content="EveryTimeMatch 시험 종료 기념 익명의 편지함">
+<title>익명의 편지함 · EveryTimeMatch</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--accent:#db628a;--deep:#3d2e40;--muted:#8d7886;--line:#f0e1e9}
+*{box-sizing:border-box}
+body{margin:0;background:#f7f4f7;color:var(--deep);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,textarea,select{font:inherit}button{cursor:pointer}
+.shell{width:100%;max-width:480px;margin:auto;min-height:100dvh;padding:22px 20px 65px;background:#fff}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-size:16px;font-weight:850;letter-spacing:-.4px}
+.back{font-size:12px;text-decoration:none;color:var(--muted);padding:9px 12px;border:1px solid var(--line);border-radius:999px}
+.hero{position:relative;overflow:hidden;text-align:center;background:linear-gradient(145deg,#fff0f4,#f9effe);border:1px solid #f5e4ed;border-radius:26px;padding:30px 22px 24px;margin-top:26px}
+.hero:before,.hero:after{content:"";position:absolute;pointer-events:none;border-radius:50%;background:#eab7d0;filter:blur(35px);opacity:.35;width:110px;height:110px;top:-45px;left:-40px}
+.hero:after{background:#c9b2eb;top:auto;left:auto;right:-40px;bottom:-50px}
+.envelope{font-size:60px;filter:drop-shadow(0 8px 10px #bd80984a);margin-bottom:13px}
+.kicker{font-size:10px;letter-spacing:2px;font-weight:900;color:#bb6c8c}
+h1{font-size:29px;letter-spacing:-1.4px;margin:9px 0 10px}
+.hero p,.sub{font-size:13px;color:#897988;line-height:1.75;margin:0}
+.badges{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.pill{padding:7px 10px;background:#ffffffb8;border:1px solid #f0dae4;color:#aa6581;border-radius:999px;font-size:11px;font-weight:750}
+.banner{padding:13px 14px;margin:17px 0;border-radius:13px;background:#f7f3f6;color:#746372;line-height:1.65;font-size:13px}
+.banner.error{background:#fff0f3;color:#a32d4e}.banner.good{background:#f0f9f3;color:#2a7246}
+.content[hidden],section[hidden],.hidden{display:none!important}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:22px 0}
+.tab{border:none;border-radius:13px;background:#f5f3f5;color:#887a86;padding:13px 7px;font-weight:750;font-size:12px}
+.tab.on{background:var(--accent);color:white;box-shadow:0 4px 12px #de8aa74d}
+h2{font-size:20px;margin:0 0 6px;letter-spacing:-.5px}
+.section-head{margin:17px 0 16px}
+textarea{width:100%;min-height:130px;padding:15px;resize:vertical;border:1px solid #e6d6df;border-radius:15px;outline:none;line-height:1.65;font-size:14px;color:var(--deep)}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #f6e6ed}
+textarea:disabled{background:#f8f8f8}
+.meta{display:flex;justify-content:space-between;gap:8px;margin:8px 2px 10px;color:#9a8a95;font-size:11px}
+button:disabled{opacity:.52;cursor:not-allowed}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:14px;padding:14px 16px;min-height:46px;background:var(--accent);color:#fff;font-weight:780;font-size:13px;gap:6px}
+.btn.alt{background:#f9edf2;color:#a95374}.btn.ghost{background:#f7f6f7;color:#776978}
+.btn.block{width:100%;margin-top:12px}
+.panel{padding:19px 18px;margin:12px 0;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:0 5px 20px #c98eaa12}
+.letter{background:#fff8fb;border:1px solid #fae8ee;border-radius:14px;padding:17px;margin:12px 0 15px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+.dot{display:inline-block;width:7px;height:7px;background:var(--accent);border-radius:50%;margin-right:6px}
+.small{font-size:11px;color:#a08c98}
+.empty{padding:35px 15px;text-align:center;border:1px dashed #ebd8e1;border-radius:18px;color:#998996;line-height:1.8;font-size:13px}
+.flex{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.report{background:transparent;border:0;color:#9a8d96;font-size:11px;text-decoration:underline;padding:8px 3px}
+.input-reply{min-height:105px;margin:10px 0}
+.rule{font-size:12px;line-height:1.8;padding:15px;border-radius:15px;background:#faf7f9;color:#92808d;margin-top:16px}
+.stats{display:flex;justify-content:space-between;font-size:12px;color:#947a8a;padding:12px 14px;background:#f9f2f6;border-radius:12px;margin:13px 0}
+dialog{width:calc(100% - 32px);max-width:420px;border:0;border-radius:21px;padding:22px;box-shadow:0 25px 70px #28202e55}
+dialog::backdrop{background:#27202bb3}
+dialog select,dialog textarea{width:100%;margin-top:8px}
+dialog select{border:1px solid #e5d3dd;border-radius:12px;padding:12px}
+.actions{display:flex;gap:8px;margin-top:15px}.actions>*{flex:1}
+</style>
+</head>
+<body>
+<main class="shell">
+<header><div class="brand">EveryTimeMatch <span aria-hidden="true">💌</span></div><a class="back" href="/">← 기존 서비스</a></header>
+<div class="hero">
+  <div class="envelope" aria-hidden="true">💌</div>
+  <div class="kicker">AFTER EXAM · SPECIAL EVENT</div>
+  <h1>익명의 편지함</h1>
+  <p>프로필보다 먼저, 마음이 도착합니다.<br>누군가의 이야기에 가볍게 답장해 보세요.</p>
+  <div class="badges"><span class="pill">✉️ 편지 1통</span><span class="pill">🌷 하루 5통 읽기</span><span class="pill">💗 하루 3번 답장</span></div>
+</div>
+<div id="notice" class="banner" role="status">로그인 상태와 이벤트 진행 여부를 확인하고 있어요.</div>
+<div id="content" class="content" hidden>
+  <div class="stats"><span id="viewStat">오늘 열람 0/5</span><span id="replyStat">오늘 답장 0/3</span></div>
+  <div class="tabs" role="tablist" aria-label="편지함 메뉴">
+    <button type="button" class="tab on" data-tab="write">✍️ 편지 쓰기</button>
+    <button type="button" class="tab" data-tab="browse">💌 편지 읽기</button>
+    <button type="button" class="tab" data-tab="inbox">📬 받은 답장</button>
+  </div>
+  <section id="write">
+    <div class="section-head"><h2>누군가에게 보내는 편지</h2><p class="sub">누가 읽을지 모르기에 조금 더 솔직해져도 괜찮아요.</p></div>
+    <textarea id="letterBody" maxlength="200" placeholder="시험 끝나고 같이 하고 싶은 일, 요즘 관심사, 새로운 사람에게 하고 싶은 말 등을 적어보세요."></textarea>
+    <div class="meta"><span id="letterCount">0 / 200자 · 최소 30자</span><span>한 사람당 1통</span></div>
+    <button type="button" class="btn block" id="sendLetter">내 편지 보내기</button>
+    <div class="rule">이름·학과·연락처 등 개인을 알아볼 수 있는 정보는 되도록 적지 말아 주세요. 상대방은 편지만 보고 답장하며, 서로 동의해야 기존 매칭으로 연결됩니다.</div>
+  </section>
+  <section id="browse" hidden>
+    <div class="section-head"><h2>오늘 도착한 편지</h2><p class="sub">조건이 맞는 사람의 편지만 도착해요. 오늘은 최대 5통을 읽을 수 있어요.</p></div>
+    <div id="letterList" aria-live="polite"></div>
+    <button type="button" class="btn alt block" id="refreshLetters">편지 새로고침</button>
+  </section>
+  <section id="inbox" hidden>
+    <div class="section-head"><h2>내 편지에 온 답장</h2><p class="sub">마음에 드는 답장 하나를 선택하면 기존 매칭·채팅으로 이어져요. 답장은 도착 후 48시간 안에 선택해 주세요.</p></div>
+    <div id="replyList" aria-live="polite"></div>
+    <button type="button" class="btn alt block" id="refreshReplies">답장 새로고침</button>
+  </section>
+</div>
+<p class="sub" style="font-size:11px;margin-top:30px">상명대학교·에브리타임 공식 서비스가 아닌 개인 제작 베타 이벤트입니다. 신고한 편지는 숨겨지고 운영 검토 대상으로 보관됩니다.</p>
+</main>
+<dialog id="reportDialog" aria-labelledby="reportTitle">
+<h2 id="reportTitle">이 편지 신고하기</h2>
+<p class="sub">신고한 사람의 이벤트 편지와 답장은 더 이상 표시되지 않아요. 상대방 신원은 공개되지 않습니다.</p>
+<label for="reportCategory" class="small">신고 사유</label>
+<select id="reportCategory">
+<option>괴롭힘/욕설</option><option>성적 발언</option><option>사칭</option>
+<option>스팸/홍보</option><option>부적절한 콘텐츠</option><option>기타</option>
+</select>
+<label for="reportReason" class="small" style="display:block;margin-top:12px">상세 설명 (선택)</label>
+<textarea id="reportReason" maxlength="500" placeholder="신고 사유를 설명해 주세요."></textarea>
+<div class="actions"><button type="button" class="btn ghost" id="cancelReport">취소</button><button type="button" class="btn" id="confirmReport">신고하고 숨기기</button></div>
+</dialog>
+<script>
+"use strict";
+const SUPABASE_URL="https://mrbuxqaeqvuevplpssgi.supabase.co";
+const SUPABASE_PUBLIC_KEY="sb_publishable_x8mtMxk3tQnIB4oI5gOc1A_aH2pL0OE";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLIC_KEY);
+const $=id=>document.getElementById(id);
+let busy=false,reportContext=null;
+let eventState={event_active:false,my_letter_sent:false,views_used:0,replies_used:0};
+function make(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
+function banner(text,type=""){const e=$("notice");e.textContent=text;e.className="banner"+(type?" "+type:"")}
+function message(error){const key=String(error?.message||error||"");const labels={
+ EVENT_CLOSED:"이벤트가 아직 시작되지 않았거나 종료됐어요.",AUTH_REQUIRED:"로그인 후 이용할 수 있어요.",
+ SCHOOL_VERIFICATION_REQUIRED:"학교 이메일 인증을 먼저 완료해 주세요.",PROFILE_OR_CONSENT_REQUIRED:"기존 서비스에서 프로필·이용 동의를 먼저 완료해 주세요.",
+ LETTER_ALREADY_SENT:"편지는 한 사람당 한 통만 보낼 수 있어요.",LETTER_LENGTH:"편지는 30~200자로 적어 주세요.",
+ CONTACT_NOT_ALLOWED:"전화번호·이메일·링크는 편지에 적을 수 없어요.",DAILY_REPLY_LIMIT_REACHED:"오늘의 답장 횟수를 모두 사용했어요.",
+ ALREADY_REPLIED:"이미 이 편지에 답장을 보냈어요.",LETTER_NOT_AVAILABLE:"현재 답장할 수 없는 편지예요.",
+ REPLY_EXPIRED:"답장 선택 가능 시간이 지났어요.",PAIR_NOT_AVAILABLE:"현재 연결할 수 없는 상대예요.",
+ LETTER_ALREADY_MATCHED:"이 편지로 이미 다른 인연이 연결됐어요.",ALREADY_REPORTED:"이미 신고한 편지예요."};
+ for(const [code,label] of Object.entries(labels))if(key.includes(code))return label;
+ return "잠시 문제가 생겼어요. 화면을 새로고침하고 다시 시도해 주세요.";
+}
+async function rpc(name,args){const {data,error}=await db.rpc(name,args);if(error)throw error;return data}
+function setLoading(button,on){button.disabled=on}
+async function status(){
+ const data=await rpc("event_status");
+ const state=Array.isArray(data)?data[0]:data;
+ if(!state)throw new Error("EVENT_STATUS_MISSING");
+ eventState=state;
+ $("viewStat").textContent="오늘 열람 "+Number(state.views_used||0)+"/5";
+ $("replyStat").textContent="오늘 답장 "+Number(state.replies_used||0)+"/3";
+ $("letterBody").disabled=Boolean(state.my_letter_sent);
+ $("sendLetter").disabled=Boolean(state.my_letter_sent);
+ $("sendLetter").textContent=state.my_letter_sent?"내 편지 전송 완료 ✓":"내 편지 보내기";
+ return state;
+}
+function tab(name){
+ for(const id of ["write","browse","inbox"])$(id).hidden=(id!==name);
+ document.querySelectorAll("[data-tab]").forEach(el=>{const on=el.dataset.tab===name;el.classList.toggle("on",on);el.setAttribute("aria-selected",String(on))});
+ if(name==="browse")loadLetters();
+ if(name==="inbox")loadReplies();
+}
+function empty(text){return make("div",text,"empty")}
+function makeReport(type,id){
+ const btn=make("button","신고·숨기기","report");btn.type="button";
+ btn.onclick=()=>{reportContext={type,id};$("reportReason").value="";$("reportCategory").value="괴롭힘/욕설";$("reportDialog").showModal()};
+ return btn;
+}
+async function loadLetters(){
+ const list=$("letterList");list.replaceChildren(make("p","편지를 불러오는 중...","sub"));
+ try{
+  const rows=await rpc("event_browse_letters");
+  await status();list.replaceChildren();
+  if(!rows.length){list.append(empty("아직 조건에 맞는 새 편지가 없어요.\n누군가 편지를 보내면 이곳에 도착할 거예요."));return}
+  for(const letter of rows){
+   const card=make("article",undefined,"panel");
+   const bar=make("div",undefined,"flex");bar.append(make("small","● FROM. 익명의 상명대 학생"),makeReport("letter",letter.letter_id));
+   card.append(bar,make("div",letter.letter_body,"letter"));
+   const input=make("textarea");input.className="input-reply hidden";input.placeholder="마음에 드는 편지에 익명으로 답장해 보세요.";input.maxLength=200;
+   const button=make("button","이 편지에 답장하기","btn alt");button.type="button";
+   const controls=make("div",undefined,"flex");controls.append(button);card.append(input,controls);
+   button.onclick=async()=>{
+    if(input.classList.contains("hidden")){input.classList.remove("hidden");button.textContent="답장 보내기";input.focus();return}
+    const content=input.value.trim();if(content.length<1||content.length>200){banner("답장은 1~200자로 작성해 주세요.","error");return}
+    if(!confirm("작성한 답장을 익명으로 보내겠어요?"))return;
+    if(busy)return;busy=true;setLoading(button,true);
+    try{await rpc("event_reply_letter",{p_letter:letter.letter_id,p_body:content});banner("답장을 전송했어요! 상대방이 수락하면 기존 매칭에서 만날 수 있어요.","good");await loadLetters()}
+    catch(error){banner(message(error),"error")}
+    finally{busy=false;setLoading(button,false)}
+   };
+   if(Number(eventState.replies_used)>=3){button.disabled=true;button.textContent="오늘 답장 3회 사용 완료"}
+   list.append(card);
+  }
+ }catch(error){list.replaceChildren(empty(message(error)));banner(message(error),"error")}
+}
+async function loadReplies(){
+ const list=$("replyList");list.replaceChildren(make("p","답장을 불러오는 중...","sub"));
+ try{
+  const rows=await rpc("event_my_replies");list.replaceChildren();
+  if(!rows.length){list.append(empty("아직 받은 답장이 없어요.\n내 편지를 읽은 누군가가 답장하면 이곳에 표시돼요."));return}
+  const matched=rows.some(x=>x.accepted);
+  for(const reply of rows){
+   const card=make("article",undefined,"panel");const head=make("div",undefined,"flex");
+   head.append(make("small","✉️ 익명의 답장"),makeReport("reply",reply.reply_id));
+   card.append(head,make("div",reply.reply_body,"letter"));
+   const expired=new Date(reply.expires_at).getTime()<Date.now();
+   const btn=make("button",reply.accepted?"💗 인연 연결 완료":expired?"선택 기간 종료":matched?"다른 답장과 연결됨":"💗 이 인연 이어가기","btn block");
+   btn.type="button";btn.disabled=reply.accepted||expired||matched;
+   btn.onclick=async()=>{
+    if(!confirm("이 사람과 연결하면 기존 매칭·채팅에서 만날 수 있어요. 계속할까요?"))return;
+    btn.disabled=true;
+    try{await rpc("event_accept_reply",{p_reply:reply.reply_id});banner("인연이 연결됐어요! 기존 매칭 목록에서 채팅을 시작할 수 있어요.","good");await loadReplies()}
+    catch(error){banner(message(error),"error");btn.disabled=false}
+   };
+   card.append(btn);
+   if(reply.accepted){const a=make("a","기존 매칭에서 대화하기 →","back");a.href="/#matches";a.style.display="inline-block";a.style.marginTop="12px";card.append(a)}
+   list.append(card);
+  }
+ }catch(error){list.replaceChildren(empty(message(error)));banner(message(error),"error")}
+}
+$("letterBody").addEventListener("input",()=>{
+ const len=$("letterBody").value.trim().length;$("letterCount").textContent=len+" / 200자 · 최소 30자";
+});
+$("sendLetter").addEventListener("click",async()=>{
+ if(busy)return;
+ const body=$("letterBody").value.trim();
+ if(body.length<30||body.length>200){banner("편지는 30~200자로 작성해 주세요.","error");return}
+ if(!confirm("편지는 한 사람당 한 통만 작성할 수 있어요. 지금 전송할까요?"))return;
+ busy=true;setLoading($("sendLetter"),true);
+ try{await rpc("event_write_letter",{p_body:body});await status();banner("편지를 보냈어요! 누군가의 답장을 기다려 보세요.","good")}
+ catch(error){banner(message(error),"error")}
+ finally{busy=false;if(!eventState.my_letter_sent)setLoading($("sendLetter"),false)}
+});
+$("refreshLetters").onclick=loadLetters;$("refreshReplies").onclick=loadReplies;
+document.querySelectorAll("[data-tab]").forEach(el=>el.onclick=()=>tab(el.dataset.tab));
+$("cancelReport").onclick=()=>$("reportDialog").close();
+$("confirmReport").onclick=async()=>{
+ if(!reportContext)return;
+ const button=$("confirmReport");button.disabled=true;
+ try{
+  const proc=reportContext.type==="letter"?"event_report_letter":"event_report_reply";
+  const args=reportContext.type==="letter"?{p_letter:reportContext.id}:{p_reply:reportContext.id};
+  args.p_category=$("reportCategory").value;args.p_reason=$("reportReason").value.trim()||null;
+  await rpc(proc,args);$("reportDialog").close();banner("신고가 접수됐어요. 해당 사용자의 익명 편지와 답장은 숨겨집니다.","good");
+  if(reportContext.type==="letter")await loadLetters();else await loadReplies();
+ }catch(error){banner(message(error),"error");$("reportDialog").close()}
+ finally{reportContext=null;button.disabled=false}
+};
+(async function init(){
+ try{
+  const {data:{user},error}=await db.auth.getUser();
+  if(error||!user){banner("기존 EveryTimeMatch에 로그인한 후 다시 열어 주세요.","error");return}
+  const state=await status();
+  if(!state.event_active){banner("익명의 편지함은 현재 준비 중이에요. 이벤트 시작 후 이용할 수 있어요.");return}
+  $("content").hidden=false;banner("이벤트 진행 중! 편지를 보내고 누군가의 이야기를 읽어 보세요.","good");
+ }catch(error){banner(message(error),"error")}
+})();
+</script>
+</body>
+</html>
