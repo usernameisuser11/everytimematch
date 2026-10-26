@@ -289,7 +289,7 @@ $$;
 create or replace function public.event_admin_reports()
 returns table(report_id uuid,report_type text,content_id uuid,category text,reason text,evidence text,created_at timestamptz,status text)
 language plpgsql security definer set search_path=''
-as $
+as $$
 begin
  if auth.uid() is null or not public.is_admin(auth.uid()) then raise exception 'ADMIN_REQUIRED'; end if;
  return query select r.id,
@@ -297,11 +297,11 @@ begin
  coalesce(r.letter_id,r.reply_id),r.category,r.reason,r.evidence,r.created_at,r.status
  from public.event_letter_reports r order by r.created_at desc limit 100;
 end;
-$;
+$$;
 
 create or replace function public.event_admin_review_report(p_report uuid,p_action text)
 returns boolean language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_letter uuid; v_reply uuid;
 begin
  if auth.uid() is null or not public.is_admin(auth.uid()) then raise exception 'ADMIN_REQUIRED'; end if;
@@ -316,7 +316,7 @@ begin
  update public.event_letter_reports set status=case when p_action='hide' then 'hidden' else 'dismissed' end where id=p_report;
  return true;
 end;
-$;
+$$;
 
 revoke all on function public.event_is_active(),public.event_require_access(),
  public.event_require_open(),public.event_pair_allowed(uuid,uuid),
