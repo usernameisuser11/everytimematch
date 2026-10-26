@@ -127,7 +127,7 @@ const server=http.createServer(async(req,res)=>{
 
   // This project is a single-page app. Explicitly serve its entrypoint rather
   // than letting the static server treat '/' (or '/app/') as a directory.
-  const isAsset=pathname==='/sw.js'||pathname==='/manifest.webmanifest'||
+  const isAsset=pathname==='/letters.html'||pathname==='/sw.js'||pathname==='/manifest.webmanifest'||
     /^\/icons\/[a-zA-Z0-9_-]+\.png$/.test(pathname);
   const acceptsHtml=(req.headers.accept||'').includes('text/html');
   const isAppPage=pathname==='/'||pathname==='/index.html'||
@@ -141,7 +141,7 @@ const server=http.createServer(async(req,res)=>{
     return;
   }
   req.url=isAppPage?'/index.html':pathname;
-  if(isAppPage)res.setHeader('Cache-Control','no-store');
+  if(isAppPage||pathname==='/letters.html')res.setHeader('Cache-Control','no-store');
   if(pathname==='/sw.js')res.setHeader('Cache-Control','no-cache');
 
   try{
