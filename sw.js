@@ -1,4 +1,4 @@
-const CACHE_NAME = "everytime-match-pwa-v3";
+const CACHE_NAME = "everytime-match-pwa-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -33,6 +33,12 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
+
+  // Anonymous letters require a fresh network response; never cache them as the SPA.
+  if (url.pathname === "/letters.html") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
