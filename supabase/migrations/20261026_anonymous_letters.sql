@@ -8,11 +8,17 @@ begin;
 create table if not exists public.event_letter_settings (
  id integer primary key default 1 check (id=1),
  enabled boolean not null default false,
+ preview_enabled boolean not null default false,
  starts_at timestamptz not null default now(),
  ends_at timestamptz not null default (now()+interval '7 days')
 );
 insert into public.event_letter_settings (id,enabled) values (1,false)
 on conflict (id) do nothing;
+
+-- Admin-only preview can also include explicitly allowlisted test accounts.
+create table if not exists public.event_letter_testers (
+ user_id uuid primary key references auth.users(id) on delete cascade
+);
 
 create table if not exists public.event_letters (
  id uuid primary key default gen_random_uuid(),
@@ -69,19 +75,30 @@ create table if not exists public.event_letter_reports (
 
 -- No direct browser table access; all reads/writes run through constrained RPCs.
 alter table public.event_letter_settings enable row level security;
+alter table public.event_letter_testers enable row level security;
 alter table public.event_letters enable row level security;
 alter table public.event_letter_views enable row level security;
 alter table public.event_letter_replies enable row level security;
 alter table public.event_letter_mutes enable row level security;
 alter table public.event_letter_reports enable row level security;
-revoke all on public.event_letter_settings,public.event_letters,public.event_letter_views,
+revoke all on public.event_letter_settings,public.event_letter_testers,
+ public.event_letters,public.event_letter_views,
  public.event_letter_replies,public.event_letter_mutes,public.event_letter_reports
  from anon,authenticated;
 
 create or replace function public.event_is_active()
 returns boolean language sql stable security definer set search_path=''
 as $$
- select coalesce((select s.enabled and now() between s.starts_at and s.ends_at
+ select coalesce((select
+ now() between s.starts_at and s.ends_at
+ and (
+ s.enabled or (
+ s.preview_enabled and auth.uid() is not null and
+ (public.is_admin(auth.uid()) or exists(
+ select 1 from public.event_letter_testers t where t.user_id=auth.uid()
+ ))
+ )
+ )
  from public.event_letter_settings s where s.id=1),false);
 $$;
 
@@ -123,6 +140,12 @@ as $$
  and (a.relationship_intent='둘 다' or b.relationship_intent='둘 다' or a.relationship_intent=b.relationship_intent)
  and not exists(select 1 from public.blocks bl where (bl.blocker=p_first and bl.blocked=p_second) or (bl.blocker=p_second and bl.blocked=p_first))
  and not exists(select 1 from public.event_letter_mutes m where (m.user_id=p_first and m.target_id=p_second) or (m.user_id=p_second and m.target_id=p_first))
+ and exists(select 1 from public.event_letter_settings st where
+ st.enabled or (
+ st.preview_enabled
+ and (public.is_admin(p_first) or exists(select 1 from public.event_letter_testers t where t.user_id=p_first))
+ and (public.is_admin(p_second) or exists(select 1 from public.event_letter_testers t where t.user_id=p_second))
+ ))
  and not exists(select 1 from public.matches ma where ma.user_a=least(p_first,p_second) and ma.user_b=greatest(p_first,p_second))
  );
 $$;
