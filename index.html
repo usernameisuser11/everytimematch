@@ -220,6 +220,12 @@
 
   <section id="discover" class="screen">
     <div class="section-head"><h2>오늘의 인연</h2><p class="muted">서로 관심을 보냈을 때만 매칭됩니다.</p></div>
+    <div id="lettersEventCard" class="feedback-card" hidden>
+      <div class="feedback-kicker">AFTER EXAM · 시험 종료 기념</div>
+      <div class="feedback-title">💌 익명의 편지함이 열렸어요</div>
+      <div class="feedback-copy">프로필 대신 누군가의 이야기로 시작해 보세요. 익명 편지를 쓰고, 마음에 드는 편지에는 답장할 수 있어요.</div>
+      <a class="secondary" href="/letters.html" style="display:block;text-align:center;text-decoration:none;font-weight:800;margin-top:14px">익명의 편지함 열기</a>
+    </div>
     <div id="feedbackCard" class="feedback-card" hidden>
       <div class="feedback-kicker">이용자 후기</div>
       <div class="feedback-title" id="feedbackCardTitle">💌 20초 후기 남기기</div>
@@ -792,6 +798,7 @@
     }else{
       await loadMatchFeedbackStatus();
       await loadCandidates();
+      refreshLetterEvent();
       if(location.hash==="#matches"){
         await loadMatches();
         go("matches");
@@ -997,6 +1004,21 @@
     if(days>0)return "⏳ "+days+"일 "+hours+"시간 남음";
     if(hours>0)return "⏳ "+hours+"시간 "+minutes+"분 남음";
     return "⏳ "+minutes+"분 남음";
+  }
+
+  async function refreshLetterEvent(){
+    const card=$("lettersEventCard");
+    if(!card)return;
+    if(!session||!accessStatus?.access_allowed||!myProfile){card.hidden=true;return;}
+    try{
+      const {data,error}=await db.rpc("event_status");
+      if(error)throw error;
+      const state=Array.isArray(data)?data[0]:data;
+      card.hidden=!Boolean(state?.event_active);
+    }catch(error){
+      card.hidden=true;
+      console.info("Letters event is not enabled",error?.message||error);
+    }
   }
 
   function renderDiscoveryEvent(){
@@ -1791,6 +1813,7 @@
     }
   });
   setInterval(()=>{if(discoveryEvent.active)renderDiscoveryEvent();},30000);
+  setInterval(()=>{if(session&&myProfile)refreshLetterEvent();},60000);
   init();
 </script>
 </body>
