@@ -284,7 +284,7 @@ revoke all on function public.event_is_active(),public.event_require_access(),
  public.event_require_open(),public.event_pair_allowed(uuid,uuid),
  public.event_status(),public.event_write_letter(text),public.event_browse_letters(),
  public.event_reply_letter(uuid,text),public.event_my_replies(),public.event_accept_reply(uuid),
- public.event_report_letter(uuid,text,text),public.event_report_reply(uuid,text,text) from public;
+ public.event_report_letter(uuid,text,text),public.event_report_reply(uuid,text,text) from public, anon, authenticated;
 grant execute on function public.event_status(),public.event_write_letter(text),
  public.event_browse_letters(),public.event_reply_letter(uuid,text),public.event_my_replies(),
  public.event_accept_reply(uuid),public.event_report_letter(uuid,text,text),
