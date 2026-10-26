@@ -31,6 +31,8 @@ h1{font-size:29px;letter-spacing:-1.4px;margin:9px 0 10px}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:22px 0}
 .tab{border:none;border-radius:13px;background:#f5f3f5;color:#887a86;padding:13px 7px;font-weight:750;font-size:12px}
 .tab.on{background:var(--accent);color:white;box-shadow:0 4px 12px #de8aa74d}
+.tabs.admin-enabled{grid-template-columns:repeat(4,1fr)}
+.tabs.admin-enabled .tab{font-size:11px}
 h2{font-size:20px;margin:0 0 6px;letter-spacing:-.5px}
 .section-head{margin:17px 0 16px}
 textarea{width:100%;min-height:130px;padding:15px;resize:vertical;border:1px solid #e6d6df;border-radius:15px;outline:none;line-height:1.65;font-size:14px;color:var(--deep)}
@@ -75,6 +77,7 @@ dialog select{border:1px solid #e5d3dd;border-radius:12px;padding:12px}
     <button type="button" class="tab on" data-tab="write">✍️ 편지 쓰기</button>
     <button type="button" class="tab" data-tab="browse">💌 편지 읽기</button>
     <button type="button" class="tab" data-tab="inbox">📬 받은 답장</button>
+    <button type="button" class="tab" data-tab="moderate" hidden>🛡 신고 관리</button>
   </div>
   <section id="write">
     <div class="section-head"><h2>누군가에게 보내는 편지</h2><p class="sub">누가 읽을지 모르기에 조금 더 솔직해져도 괜찮아요.</p></div>
@@ -92,6 +95,11 @@ dialog select{border:1px solid #e5d3dd;border-radius:12px;padding:12px}
     <div class="section-head"><h2>내 편지에 온 답장</h2><p class="sub">마음에 드는 답장 하나를 선택하면 기존 매칭·채팅으로 이어져요. 답장은 도착 후 48시간 안에 선택해 주세요.</p></div>
     <div id="replyList" aria-live="polite"></div>
     <button type="button" class="btn alt block" id="refreshReplies">답장 새로고침</button>
+  </section>
+  <section id="moderate" hidden>
+    <div class="section-head"><h2>신고 관리</h2><p class="sub">운영자만 확인할 수 있어요. 신고된 편지·답장을 검토하고 숨기거나 기각할 수 있습니다.</p></div>
+    <div id="moderationList" aria-live="polite"></div>
+    <button type="button" class="btn alt block" id="refreshModeration">신고 내역 새로고침</button>
   </section>
 </div>
 <p class="sub" style="font-size:11px;margin-top:30px">상명대학교·에브리타임 공식 서비스가 아닌 개인 제작 베타 이벤트입니다. 신고한 편지는 숨겨지고 운영 검토 대상으로 보관됩니다.</p>
@@ -144,10 +152,11 @@ async function status(){
  return state;
 }
 function tab(name){
- for(const id of ["write","browse","inbox"])$(id).hidden=(id!==name);
+ for(const id of ["write","browse","inbox","moderate"])$(id).hidden=(id!==name);
  document.querySelectorAll("[data-tab]").forEach(el=>{const on=el.dataset.tab===name;el.classList.toggle("on",on);el.setAttribute("aria-selected",String(on))});
  if(name==="browse")loadLetters();
  if(name==="inbox")loadReplies();
+ if(name==="moderate")loadModeration();
 }
 function empty(text){return make("div",text,"empty")}
 function makeReport(type,id){
@@ -182,6 +191,37 @@ async function loadLetters(){
   }
  }catch(error){list.replaceChildren(empty(message(error)));banner(message(error),"error")}
 }
+
+async function loadModeration(){
+ const list=$("moderationList");list.replaceChildren(make("p","신고 내역을 불러오는 중...","sub"));
+ try{
+  const rows=await rpc("event_admin_reports");list.replaceChildren();
+  if(!rows.length){list.append(empty("아직 접수된 신고가 없어요."));return}
+  for(const report of rows){
+   const card=make("article",undefined,"panel");
+   const head=make("div",undefined,"flex");
+   head.append(make("small",(report.report_type==="letter"?"편지 신고":"답장 신고")+" · "+report.category),make("small",new Date(report.created_at).toLocaleDateString("ko-KR")));
+   card.append(head,make("div",report.evidence,"letter"));
+   if(report.reason)card.append(make("p","신고 설명: "+report.reason,"sub"));
+   card.append(make("p","처리 상태: "+(report.status==="pending"?"대기":report.status==="hidden"?"콘텐츠 숨김":"기각"),"small"));
+   if(report.status==="pending"){
+    const actions=make("div",undefined,"actions");
+    for(const [action,label,cls] of [["hide","내용 숨기기","btn"],["dismiss","기각하기","btn ghost"]]){
+     const btn=make("button",label,cls);btn.type="button";
+     btn.onclick=async()=>{
+      if(!confirm(label+" 처리할까요?"))return;
+      btn.disabled=true;
+      try{await rpc("event_admin_review_report",{p_report:report.report_id,p_action:action});banner("신고 처리를 완료했어요.","good");await loadModeration()}
+      catch(error){banner(message(error),"error");btn.disabled=false}
+     };actions.append(btn);
+    }
+    card.append(actions);
+   }
+   list.append(card);
+  }
+ }catch(error){list.replaceChildren(empty(message(error)));banner(message(error),"error")}
+}
+
 async function loadReplies(){
  const list=$("replyList");list.replaceChildren(make("p","답장을 불러오는 중...","sub"));
  try{
@@ -220,7 +260,7 @@ $("sendLetter").addEventListener("click",async()=>{
  catch(error){banner(message(error),"error")}
  finally{busy=false;if(!eventState.my_letter_sent)setLoading($("sendLetter"),false)}
 });
-$("refreshLetters").onclick=loadLetters;$("refreshReplies").onclick=loadReplies;
+$("refreshLetters").onclick=loadLetters;$("refreshReplies").onclick=loadReplies;$("refreshModeration").onclick=loadModeration;
 document.querySelectorAll("[data-tab]").forEach(el=>el.onclick=()=>tab(el.dataset.tab));
 $("cancelReport").onclick=()=>$("reportDialog").close();
 $("confirmReport").onclick=async()=>{
@@ -240,7 +280,20 @@ $("confirmReport").onclick=async()=>{
   const {data:{user},error}=await db.auth.getUser();
   if(error||!user){banner("기존 EveryTimeMatch에 로그인한 후 다시 열어 주세요.","error");return}
   const state=await status();
-  if(!state.event_active){banner("익명의 편지함은 현재 준비 중이에요. 이벤트 시작 후 이용할 수 있어요.");return}
+  let isAdmin=false;
+  try{
+   const {data:admins,error:adminError}=await db.rpc("get_my_admin_status");
+   if(!adminError)isAdmin=Boolean((Array.isArray(admins)?admins[0]:admins)?.is_admin);
+  }catch(error){console.info("Admin status unavailable",error)}
+  if(isAdmin){
+   document.querySelector('[data-tab="moderate"]').hidden=false;
+   document.querySelector(".tabs").classList.add("admin-enabled");
+  }
+  if(!state.event_active){
+   banner("익명의 편지함은 현재 준비 중이에요. 이벤트 시작 후 이용할 수 있어요.");
+   if(isAdmin){$("content").hidden=false;tab("moderate");}
+   return;
+  }
   $("content").hidden=false;banner("이벤트 진행 중! 편지를 보내고 누군가의 이야기를 읽어 보세요.","good");
  }catch(error){banner(message(error),"error")}
 })();
